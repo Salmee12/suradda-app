@@ -66,8 +66,13 @@ class _CloudSongsTabState extends State<CloudSongsTab> {
 
               if (roomVM.room != null) {
                 if (roomVM.isHost) {
+
                   await playback.player.pause();
-                  roomVM.hostPlaySong(song, queue: libraryVM.cloudSongs);
+                  await playback.player.playing ?
+                  ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Tap again to change the song')),
+                    )
+                      : roomVM.hostPlaySong(song, queue: libraryVM.cloudSongs);
 
 
 
