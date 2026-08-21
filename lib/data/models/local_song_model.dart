@@ -22,7 +22,8 @@ class LocalSongModel implements PlayableTrack {
       id: song.id,
       titleField: song.title,
       artistField: song.artist ?? 'Unknown artist',
-      uri: song.uri ?? song.data,
+      // CRITICAL FIX: Use song.data (absolute file path) first for direct file reading
+      uri: (song.data.isNotEmpty ? song.data : song.uri) ?? '',
       duration: song.duration != null ? Duration(milliseconds: song.duration!) : null,
     );
   }

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../core/utils/color_utils.dart';
 import '../../services/audio/playback_service.dart';
+import '../viewmodels/hotspot_room_viewmodel.dart';
 import '../viewmodels/online_room_viewmodel.dart';
 import '../views/player/music_player_page.dart';
 
@@ -12,25 +13,23 @@ class MusicSlab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final playback = context.watch<PlaybackService>();
-    final roomVM = context.watch<OnlineRoomViewModel>();
+    final onlineVM = context.watch<OnlineRoomViewModel>();
+    final hotspotVM = context.watch<HotspotRoomViewModel>();
     final song = playback.currentSong;
 
     if (song == null) return const SizedBox.shrink();
 
-    /*final inParty = roomVM.room != null;
-    final isHost = roomVM.isHost;
-    final controlsEnabled = !inParty || isHost;
+    final inOnlineParty = onlineVM.room != null;
+    final inHotspotParty = hotspotVM.isHost || hotspotVM.isClient;
+    final isAnyHost = (inOnlineParty && onlineVM.isHost) || (inHotspotParty && hotspotVM.isHost);
+    final isAnyClientOnly = (inOnlineParty && !onlineVM.isHost) || (inHotspotParty && hotspotVM.isClient);
 
-    final onPrevious = inParty ? roomVM.hostPlayPrevious : playback.playPrevious;
-    final onNext = inParty ? roomVM.hostPlayNext : playback.playNext;
-    final onToggle = inParty ? roomVM.hostTogglePlayPause : playback.togglePlayPause;*/
+    final toggleEnabled = !inOnlineParty && !inHotspotParty || isAnyHost;
+    final skipEnabled = !inOnlineParty && !inHotspotParty  || !(inOnlineParty && !onlineVM.isHost);
 
-    final inParty = roomVM.room != null;
-    final isHost = roomVM.isHost;
-    final toggleEnabled = !inParty || isHost; // play/pause: solo mode, or host only
-    final skipEnabled = !inParty; // next/previous: solo mode only, disabled entirely in a party
-
-    final onToggle = inParty ? roomVM.hostTogglePlayPause : playback.togglePlayPause;
+    final onToggle = inHotspotParty
+        ? hotspotVM.hostTogglePlayPause
+        : playback.togglePlayPause;
 
     return GestureDetector(
       onTap: () {
@@ -85,7 +84,7 @@ class MusicSlab extends StatelessWidget {
                     children: [
                       Row(
                         children: [
-                          if (inParty)
+                          if (inOnlineParty)
                             const Padding(
                               padding: EdgeInsets.only(right: 4),
                               child: Icon(Icons.groups, size: 14, color: Colors.white70),

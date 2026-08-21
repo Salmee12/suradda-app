@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../../services/audio/playback_service.dart';
+import '../../viewmodels/hotspot_room_viewmodel.dart';
 import '../../viewmodels/library_viewmodel.dart';
 import '../../viewmodels/online_room_viewmodel.dart';
 
@@ -59,10 +60,18 @@ class _CloudSongsTabState extends State<CloudSongsTab> {
           ),
           title: Text(song.songName, maxLines: 1, overflow: TextOverflow.ellipsis),
           subtitle: Text(song.artist, maxLines: 1, overflow: TextOverflow.ellipsis),
-            onTap: () async {
+          onTap: () async {
+            final roomVM = context.read<OnlineRoomViewModel>();
+            final hotspotVM = context.read<HotspotRoomViewModel>();
+            final playback = context.read<PlaybackService>();
 
-              final roomVM = context.read<OnlineRoomViewModel>();
-              final playback = context.read<PlaybackService>();
+
+            if (hotspotVM.isHost || hotspotVM.isClient) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Cloud songs aren\'t available in a Hotspot party')),
+              );
+              return;
+            }
 
               if (roomVM.room != null) {
                 if (roomVM.isHost) {

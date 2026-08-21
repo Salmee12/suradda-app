@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:on_audio_query/on_audio_query.dart';
+import '../../../services/audio/playback_service.dart';
 import '../../viewmodels/library_viewmodel.dart';
+import '../../viewmodels/hotspot_room_viewmodel.dart';
 import '../../viewmodels/online_room_viewmodel.dart';
 
 class LocalSongsTab extends StatefulWidget {
@@ -23,6 +25,7 @@ class _LocalSongsTabState extends State<LocalSongsTab> {
   @override
   Widget build(BuildContext context) {
     final libraryVM = context.watch<LibraryViewModel>();
+    //final hotspotVM = context.watch<HotspotRoomViewModel>();
 
     if (libraryVM.isLoadingLocal) {
       return const Center(child: CircularProgressIndicator());
@@ -50,14 +53,32 @@ class _LocalSongsTabState extends State<LocalSongsTab> {
           ),
           title: Text(song.title, maxLines: 1, overflow: TextOverflow.ellipsis),
           subtitle: Text(song.subtitle, maxLines: 1, overflow: TextOverflow.ellipsis),
-          onTap: () {
+          onTap: () async {
             final roomVM = context.read<OnlineRoomViewModel>();
+            final hotspotVM = context.read<HotspotRoomViewModel>();
+
+
+
             if (roomVM.room != null) {
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Local songs can\'t be shared in a party')),
+                const SnackBar(content: Text('Local songs can\'t be shared in an online party')),
               );
               return;
             }
+
+            if (hotspotVM.isClient) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Only the host can choose songs during a Hotspot party')),
+              );
+              return;
+            }
+
+            if (hotspotVM.isHost) {
+              hotspotVM.playLocalSongAsHost(song);
+              await hotspotVM.hostTogglePlayPause();
+              return;
+            }
+
             libraryVM.playLocalSong(song);
           },
         );

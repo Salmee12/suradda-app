@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../../../core/utils/color_utils.dart';
 import '../../../services/audio/playback_service.dart';
 import '../../viewmodels/online_room_viewmodel.dart';
+import '../../viewmodels/hotspot_room_viewmodel.dart';
 
 class MusicPlayerPage extends StatelessWidget {
   const MusicPlayerPage({super.key});
@@ -19,12 +20,40 @@ class MusicPlayerPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final playback = context.watch<PlaybackService>();
-    final vm = context.watch<OnlineRoomViewModel>();
+    final onlineVM = context.watch<OnlineRoomViewModel>();
+    final hotspotVM = context.watch<HotspotRoomViewModel>();
     final song = playback.currentSong;
 
     if (song == null) {
       return const Scaffold(body: Center(child: Text('Nothing playing')));
     }
+
+    // --- room-awareness, mirrors MusicSlab's logic ---
+    final inOnlineParty = onlineVM.room != null;
+    final inHotspotParty = hotspotVM.isHost || hotspotVM.isClient;
+    final inAnyParty = inOnlineParty || inHotspotParty;
+    final isHost = (inOnlineParty && onlineVM.isHost) || (inHotspotParty && hotspotVM.isHost);
+
+    final toggleEnabled = !inAnyParty || isHost;
+    final skipEnabled = !inAnyParty || (inOnlineParty && onlineVM.isHost);
+    final seekEnabled = !inAnyParty || isHost;
+
+    Future<void> onToggle() async {
+      if (inHotspotParty) {
+        await hotspotVM.hostTogglePlayPause();
+      }  else {
+        await playback.togglePlayPause();
+      }
+    }
+
+    Future<void> onSeek(Duration position) async {
+      if (inHotspotParty) {
+        await hotspotVM.hostSeek(position);
+      } else {
+        await playback.seek(position);
+      }
+    }
+    // ---
 
     return Container(
       decoration: BoxDecoration(
@@ -42,6 +71,24 @@ class MusicPlayerPage extends StatelessWidget {
             icon: const Icon(Icons.keyboard_arrow_down, color: Colors.white, size: 32),
             onPressed: () => Navigator.pop(context),
           ),
+          actions: [
+            if (inAnyParty)
+              Padding(
+                padding: const EdgeInsets.only(right: 16),
+                child: Center(
+                  child: Row(
+                    children: [
+                      const Icon(Icons.groups, size: 16, color: Colors.white70),
+                      const SizedBox(width: 4),
+                      Text(
+                        isHost ? 'Hosting' : 'Listening',
+                        style: const TextStyle(color: Colors.white70, fontSize: 12),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+          ],
         ),
         body: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -56,7 +103,8 @@ class MusicPlayerPage extends StatelessWidget {
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(12),
                       child: song.artworkUrl != null
-                          ? Image.network(song.artworkUrl!, fit: BoxFit.cover, width: double.infinity, errorBuilder: (_, _, _) => _fallbackArt())
+                          ? Image.network(song.artworkUrl!,
+                          fit: BoxFit.cover, width: double.infinity, errorBuilder: (_, _, _) => _fallbackArt())
                           : _fallbackArt(),
                     ),
                   ),
@@ -114,7 +162,7 @@ class MusicPlayerPage extends StatelessWidget {
                                   data: SliderTheme.of(context).copyWith(
                                     activeTrackColor: Colors.white,
                                     inactiveTrackColor: Colors.white24,
-                                    thumbColor: Colors.white,
+                                    thumbColor: seekEnabled ? Colors.white : Colors.white38,
                                     trackHeight: 4,
                                     overlayShape: SliderComponentShape.noOverlay,
                                   ),
@@ -124,9 +172,10 @@ class MusicPlayerPage extends StatelessWidget {
                                     value: position.inMilliseconds
                                         .toDouble()
                                         .clamp(0, duration.inMilliseconds.toDouble().clamp(1, double.infinity)),
-                                    onChanged: (_) {},
-                                    onChangeEnd: (value) =>
-                                        playback.seek(Duration(milliseconds: value.toInt())),
+                                    onChanged: seekEnabled ? (_) {} : null,
+                                    onChangeEnd: seekEnabled
+                                        ? (value) => onSeek(Duration(milliseconds: value.toInt()))
+                                        : null,
                                   ),
                                 ),
                                 Row(
@@ -147,9 +196,9 @@ class MusicPlayerPage extends StatelessWidget {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         IconButton(
-                          onPressed: playback.hasPrevious ? playback.playPrevious : null,
+                          onPressed: skipEnabled && playback.hasPrevious ? playback.playPrevious : null,
                           icon: const Icon(CupertinoIcons.backward_end_fill),
-                          color: playback.hasPrevious ? Colors.white : Colors.white24,
+                          color: skipEnabled && playback.hasPrevious ? Colors.white : Colors.white24,
                           iconSize: 36,
                         ),
                         const SizedBox(width: 20),
@@ -158,10 +207,10 @@ class MusicPlayerPage extends StatelessWidget {
                           builder: (context, snapshot) {
                             final playing = snapshot.data?.playing ?? false;
                             return IconButton(
-                              onPressed: playback.togglePlayPause,
+                              onPressed: toggleEnabled ? onToggle : null,
                               icon: Icon(
                                 playing ? CupertinoIcons.pause_circle_fill : CupertinoIcons.play_circle_fill,
-                                color: Colors.white,
+                                color: toggleEnabled ? Colors.white : Colors.white24,
                               ),
                               iconSize: 80,
                             );
@@ -169,9 +218,9 @@ class MusicPlayerPage extends StatelessWidget {
                         ),
                         const SizedBox(width: 20),
                         IconButton(
-                          onPressed: playback.hasNext ? playback.playNext : null,
+                          onPressed: skipEnabled && playback.hasNext ? playback.playNext : null,
                           icon: const Icon(CupertinoIcons.forward_end_fill),
-                          color: playback.hasNext ? Colors.white : Colors.white24,
+                          color: skipEnabled && playback.hasNext ? Colors.white : Colors.white24,
                           iconSize: 36,
                         ),
                       ],

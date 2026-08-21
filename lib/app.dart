@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:suradda_app/presentation/viewmodels/hotspot_room_viewmodel.dart';
 import 'package:suradda_app/presentation/viewmodels/online_room_viewmodel.dart';
+import 'package:suradda_app/services/streaming/local_stream_host_service.dart';
 import 'di/locator.dart';
 import 'presentation/viewmodels/auth_viewmodel.dart';
 import 'presentation/views/root/root_shell.dart';
@@ -16,7 +18,10 @@ class SurAddaApp extends StatelessWidget {
       providers: [
         ChangeNotifierProvider<AuthViewModel>(create: (_) => locator<AuthViewModel>()),
         ChangeNotifierProvider<PlaybackService>.value(value: locator<PlaybackService>()),
-        ChangeNotifierProvider<OnlineRoomViewModel>.value(value: locator<OnlineRoomViewModel>()), // NEW
+        ChangeNotifierProvider<OnlineRoomViewModel>.value(value: locator<OnlineRoomViewModel>()),
+        ChangeNotifierProvider<HotspotRoomViewModel>.value(value: locator<HotspotRoomViewModel>()),
+        ChangeNotifierProvider<LocalStreamHostService>.value(value: locator<LocalStreamHostService>()),
+
       ],
       child: MaterialApp(
         title: 'SurAdda',

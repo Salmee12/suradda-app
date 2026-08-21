@@ -1,6 +1,7 @@
 import 'package:get_it/get_it.dart';
 import 'package:dio/dio.dart';
 import '../core/network/dio_client.dart';
+import '../presentation/viewmodels/hotspot_room_viewmodel.dart';
 import '../services/audio/local_audio_service.dart';
 import '../services/auth/token_storage_service.dart';
 import '../services/audio/playback_service.dart';
@@ -13,6 +14,8 @@ import '../presentation/viewmodels/library_viewmodel.dart';
 
 import '../data/datasources/remote/room_api.dart';
 import '../data/repositories/room_repository.dart';
+import '../services/streaming/local_stream_client_service.dart';
+import '../services/streaming/local_stream_host_service.dart';
 import '../services/streaming/online_room_socket_service.dart';
 import '../presentation/viewmodels/online_room_viewmodel.dart';
 
@@ -39,17 +42,31 @@ void setupLocator() {
         locator<PlaybackService>(),
       ),
   );
-      locator.registerLazySingleton<RoomApi>(() => RoomApi(locator<Dio>()));
-      locator.registerLazySingleton<RoomRepository>(() => RoomRepository(locator<RoomApi>()));
+ // locator.registerFactory<LocalStreamHostService>(() => LocalStreamHostService());
+  //locator.registerFactory<LocalStreamClientService>(() => LocalStreamClientService());
+  locator.registerLazySingleton<RoomApi>(() => RoomApi(locator<Dio>()));
+  locator.registerLazySingleton<RoomRepository>(() => RoomRepository(locator<RoomApi>()));
   // CHANGE: registerFactory -> registerLazySingleton
-       locator.registerLazySingleton<OnlineRoomSocketService>(() => OnlineRoomSocketService());
-      locator.registerLazySingleton<OnlineRoomViewModel>(
+  locator.registerLazySingleton<OnlineRoomSocketService>(() => OnlineRoomSocketService());
+  locator.registerLazySingleton<OnlineRoomViewModel>(
         () => OnlineRoomViewModel(
              locator<RoomRepository>(),
-          locator<SongRepository>(),
-          locator<OnlineRoomSocketService>(),
+             locator<SongRepository>(),
+             locator<OnlineRoomSocketService>(),
              locator<PlaybackService>(),
-            locator<TokenStorageService>(),
+             locator<TokenStorageService>(),
+    ),
+  );
+  // Add to your lib/di/locator.dart setup function:
+
+  locator.registerLazySingleton<LocalStreamHostService>(() => LocalStreamHostService());
+  locator.registerLazySingleton<LocalStreamClientService>(() => LocalStreamClientService());
+
+  locator.registerLazySingleton<HotspotRoomViewModel>(
+        () => HotspotRoomViewModel(
+      hostService: locator<LocalStreamHostService>(),
+      clientService: locator<LocalStreamClientService>(),
+      playbackService: locator<PlaybackService>(),
     ),
   );
 }
