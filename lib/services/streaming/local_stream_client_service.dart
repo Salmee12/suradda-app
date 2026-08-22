@@ -4,6 +4,8 @@ import 'dart:io';
 import 'package:bonsoir/bonsoir.dart';
 import 'package:flutter/foundation.dart';
 
+import '../audio/playback_service.dart';
+
 class DiscoveredHost {
   final String name;
   final String hostIp;
@@ -129,8 +131,7 @@ class LocalStreamClientService {
       });
     } catch (e) {
       debugPrint('Failed to connect to host WebSocket: $e');
-      rethrow;
-    }
+      rethrow;    }
   }
 
   Future<void> stopDiscovery() async {

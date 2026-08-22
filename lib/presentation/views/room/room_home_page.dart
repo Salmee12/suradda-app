@@ -23,7 +23,7 @@ class _RoomHomePageState extends State<RoomHomePage> {
 
   void _resetHotspotState(HotspotRoomViewModel vm) {
     debugPrint('[RoomUI] Resetting hotspot UI state and stopping discovery...');
-    vm.clientService.stopDiscovery();
+   // vm.clientService.stopDiscovery();
     setState(() {
       _showHotspotHost = false;
       _showHotspotJoin = false;
@@ -176,6 +176,8 @@ class _RoomHomePageState extends State<RoomHomePage> {
                       subtitle: Text(h.hostIp),
                       onTap: () async {
                         debugPrint('[RoomUI] Selected host: ${h.name} (${h.hostIp})');
+                        final playback = context.read<PlaybackService>();
+                        await playback.player.stop();
                         final vm = context.read<HotspotRoomViewModel>();
                         await vm.joinParty(h);
                         _resetHotspotState(vm);

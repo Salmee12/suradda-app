@@ -38,7 +38,7 @@ class HotspotRoomViewModel extends ChangeNotifier {
     debugPrint('[HotspotVM] startHosting() called');
     await clientService.disconnect();
     await clientService.stopDiscovery();
-    playbackService.clearQueue();
+   // playbackService.clearQueue();
     await hostService.startHost();
     _mode = HotspotRoomMode.host;
 
