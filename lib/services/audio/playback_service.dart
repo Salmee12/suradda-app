@@ -3,6 +3,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:just_audio/just_audio.dart';
 import '../../data/models/playable_track.dart';
+import '../../data/models/radio_model.dart';
 
 /// Synthetic track representation for client devices listening to an HTTP stream
 class HotspotStreamTrack implements PlayableTrack {
@@ -146,13 +147,11 @@ class PlaybackService extends ChangeNotifier {
   }
 
   Future<void> pause() async {
-    _playRequestId++;
     await _player.pause();
     notifyListeners();
   }
 
   Future<void> resume() async {
-    _playRequestId++;
     await _player.play();
     notifyListeners();
   }
@@ -170,6 +169,18 @@ class PlaybackService extends ChangeNotifier {
   Stream<Duration> get positionStream => _player.positionStream;
   Stream<Duration?> get durationStream => _player.durationStream;
   Stream<PlayerState> get playerStateStream => _player.playerStateStream;
+
+
+  Future<void> playRadioStation(RadioStation station) async {
+    final radioTrack = HotspotStreamTrack(
+      trackId: station.stationUuid,
+      title: station.name,
+      subtitle: 'Live Radio • ${station.tags}',
+      playUrl: station.streamUrl,
+    );
+
+    await playSong(radioTrack);
+  }
 
   bool get isPlaying => _player.playing;
 

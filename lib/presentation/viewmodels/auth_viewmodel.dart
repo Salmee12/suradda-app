@@ -42,7 +42,7 @@ class AuthViewModel extends ChangeNotifier {
       notifyListeners();
       return true;
     } catch (e) {
-      errorMessage = 'Registration failed. Please check your details.';
+      errorMessage = e.toString().replaceFirst('Exception: ', ''); // CHANGED
       isLoading = false;
       notifyListeners();
       return false;
@@ -61,7 +61,7 @@ class AuthViewModel extends ChangeNotifier {
       notifyListeners();
       return true;
     } catch (e) {
-      errorMessage = 'Invalid username or password.';
+      errorMessage =  e.toString().replaceFirst('Exception: ', '');
       isLoading = false;
       notifyListeners();
       return false;

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:on_audio_query/on_audio_query.dart';
-import '../../../services/audio/playback_service.dart';
 import '../../viewmodels/library_viewmodel.dart';
 import '../../viewmodels/hotspot_room_viewmodel.dart';
 import '../../viewmodels/online_room_viewmodel.dart';
@@ -43,7 +42,7 @@ class _LocalSongsTabState extends State<LocalSongsTab> {
           const Padding(
             padding: EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
             child: Text(
-              'Tap twice to change songs',
+              'Pause the music once after changing songs to share it in a Hotspot party.',
               style: TextStyle(
                 fontSize: 12,
                 color: Colors.grey,
@@ -73,6 +72,7 @@ class _LocalSongsTabState extends State<LocalSongsTab> {
                   final roomVM = context.read<OnlineRoomViewModel>();
                   final hotspotVM = context.read<HotspotRoomViewModel>();
 
+
                   if (roomVM.room != null) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(content: Text('Local songs can\'t be shared in an online party')),
@@ -90,7 +90,8 @@ class _LocalSongsTabState extends State<LocalSongsTab> {
                   if (hotspotVM.isHost) {
                     try {
                       await hotspotVM.playLocalSongAsHost(song);
-                      await hotspotVM.hostTogglePlayPause(); // properly awaited
+                      await hotspotVM.hostTogglePlayPause();
+                      // properly awaited
                     } catch (e) {
                       if (context.mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(

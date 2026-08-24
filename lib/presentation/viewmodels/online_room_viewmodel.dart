@@ -249,9 +249,10 @@ class OnlineRoomViewModel extends ChangeNotifier {
   bool _isToggling = false; // NEW
 
   Future<void> hostTogglePlayPause() async {
-    if (!isHost || _isToggling) return; // guard against reentrant calls
+    if (!isHost || _isToggling) return;
     _isToggling = true;
     try {
+      await playbackService.togglePlayPause();
 
       final positionMs = playbackService.player.position.inMilliseconds;
       final activeSongId = playbackService.currentSong?.trackId ?? room?.currentSongId ?? '';
@@ -261,7 +262,7 @@ class OnlineRoomViewModel extends ChangeNotifier {
       } else {
         socketService.sendPause(positionMs: positionMs);
       }
-      room = room?.copyWith(isPlaying: playbackService.isPlaying); // explicit, don't rely on notifyListeners timing alone
+      room = room?.copyWith(isPlaying: playbackService.isPlaying);
       notifyListeners();
     } finally {
       _isToggling = false;

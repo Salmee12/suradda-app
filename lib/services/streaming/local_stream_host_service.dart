@@ -3,6 +3,8 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:bonsoir/bonsoir.dart';
 import 'package:flutter/foundation.dart';
+import 'package:suradda_app/data/models/user_model.dart';
+
 
 class LocalStreamHostService extends ChangeNotifier {
   HttpServer? _server;

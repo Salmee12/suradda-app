@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../../core/navigation/app_scaffold_key.dart';
 import '../../viewmodels/online_room_viewmodel.dart';
 import '../../viewmodels/hotspot_room_viewmodel.dart';
 import '../../../services/audio/playback_service.dart';
@@ -48,7 +49,10 @@ class _RoomHomePageState extends State<RoomHomePage> {
     final canHostHotspot = playback.currentSong is LocalSongModel;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Parties')),
+      appBar: AppBar(
+          title: const Text('Parties'),
+      ),
+
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
         child: Column(
@@ -178,6 +182,7 @@ class _RoomHomePageState extends State<RoomHomePage> {
                         debugPrint('[RoomUI] Selected host: ${h.name} (${h.hostIp})');
                         final playback = context.read<PlaybackService>();
                         await playback.player.stop();
+                        playback.clearQueue();
                         final vm = context.read<HotspotRoomViewModel>();
                         await vm.joinParty(h);
                         _resetHotspotState(vm);

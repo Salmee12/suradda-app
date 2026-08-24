@@ -19,12 +19,34 @@ class HotspotRoomPage extends StatelessWidget {
           IconButton(
             icon: const Icon(Icons.exit_to_app),
             tooltip: 'Leave',
-            onPressed: () => roomVM.leaveRoom(), // NEW — no Navigator.pop, state swap handles it
+            onPressed: () => roomVM.leaveRoom(),
           ),
         ],
       ),
       body: Column(
         children: [
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            color: Theme.of(context).colorScheme.surfaceContainerHighest,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(
+                  Icons.warning_amber,
+                  color: Theme.of(context).colorScheme.error,
+                  size: 20,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Changing tracks and pausing frequently might disrupt sync between clients. Tap on the seekbar to adjust sync.',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                ),
+              ],
+            ),
+          ),
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(20),

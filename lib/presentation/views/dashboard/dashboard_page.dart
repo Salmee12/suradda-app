@@ -5,8 +5,13 @@ class DashboardPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
-      body: Center(child: Text('Library — coming soon')),
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Dashboard'),
+      ),
+      body: const Center(
+        child: Text('Welcome to the Dashboard!'),
+      ),
     );
   }
 }

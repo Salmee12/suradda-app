@@ -18,7 +18,7 @@ class AppBottomNavBar extends StatelessWidget {
       items: const [
         BottomNavigationBarItem(icon: Icon(Icons.library_music), label: 'Library'),
         BottomNavigationBarItem(icon: Icon(Icons.groups), label: 'Rooms'),
-        BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Dashboard'),
+        BottomNavigationBarItem(icon: Icon(Icons.radio), label: 'Radio'), // CHANGED
       ],
     );
   }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../../core/navigation/app_scaffold_key.dart';
 import '../../viewmodels/online_room_viewmodel.dart';
 import '../../../services/audio/playback_service.dart';
 
@@ -16,6 +17,7 @@ class PartyView extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: Text('Party ${room?.code ?? ''}'),
+
         actions: [
           IconButton(
             icon: const Icon(Icons.exit_to_app),

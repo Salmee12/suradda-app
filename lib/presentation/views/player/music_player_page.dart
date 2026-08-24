@@ -28,20 +28,25 @@ class MusicPlayerPage extends StatelessWidget {
       return const Scaffold(body: Center(child: Text('Nothing playing')));
     }
 
-    // --- room-awareness, mirrors MusicSlab's logic ---
     final inOnlineParty = onlineVM.room != null;
     final inHotspotParty = hotspotVM.isHost || hotspotVM.isClient;
     final inAnyParty = inOnlineParty || inHotspotParty;
     final isHost = (inOnlineParty && onlineVM.isHost) || (inHotspotParty && hotspotVM.isHost);
 
-    final toggleEnabled = !inAnyParty || isHost;
-    final skipEnabled = !inAnyParty || (inOnlineParty && onlineVM.isHost);
+    const toggleEnabled = true;
+    final skipEnabled = !inAnyParty;
     final seekEnabled = !inAnyParty || isHost;
 
     Future<void> onToggle() async {
       if (inHotspotParty) {
         await hotspotVM.hostTogglePlayPause();
-      }  else {
+      } else if (inOnlineParty) {
+        if (onlineVM.isHost) {
+          await onlineVM.hostTogglePlayPause();
+        } else {
+          await playback.togglePlayPause();
+        }
+      } else {
         await playback.togglePlayPause();
       }
     }
@@ -49,11 +54,12 @@ class MusicPlayerPage extends StatelessWidget {
     Future<void> onSeek(Duration position) async {
       if (inHotspotParty) {
         await hotspotVM.hostSeek(position);
+      } else if (inOnlineParty) {
+        await onlineVM.hostSeek(position);
       } else {
         await playback.seek(position);
       }
     }
-    // ---
 
     return Container(
       decoration: BoxDecoration(

@@ -19,7 +19,7 @@ class AuthRepository {
       email: email,
       phoneNumber: phoneNumber,
       password: password,
-    );
+    ); // no try/catch here — let AuthViewModel handle it
   }
 
   Future<void> login({required String username, required String password}) async {

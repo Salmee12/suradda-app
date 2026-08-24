@@ -83,6 +83,14 @@ class HotspotRoomViewModel extends ChangeNotifier {
         title: song.title,
         artist: song.subtitle,
       );
+
+      // NEW: nudge clients with an explicit RESUME after SYNC_TRACK.
+      // This does NOT touch the host's own local playback state — it
+      // only causes clients to re-issue play() on the stream they've
+      // just loaded, which is what your manual pause/play test was
+      // effectively doing.
+      hostService.broadcastPlayState(true, 0);
+
       debugPrint('[HotspotVM] Track broadcast complete for: ${song.title}');
       notifyListeners();
     } finally {
@@ -123,11 +131,23 @@ class HotspotRoomViewModel extends ChangeNotifier {
     );
     await hostService.stopHost();
     playbackService.clearQueue();
-    await clientService.connectToHost(host.hostIp, port: host.port);
+
+    // Flip mode BEFORE connecting so the very first SYNC_TRACK
+    // (which the host sends the instant the socket upgrades) isn't
+    // dropped by the isClient guard in onSyncTrack/onPause/onResume.
     _connectedHost = host;
     _mode = HotspotRoomMode.client;
-    debugPrint('[HotspotVM] Joined party successfully as client');
     notifyListeners();
+
+    try {
+      await clientService.connectToHost(host.hostIp, port: host.port);
+      debugPrint('[HotspotVM] Joined party successfully as client');
+    } catch (e) {
+      _mode = HotspotRoomMode.none;
+      _connectedHost = null;
+      notifyListeners();
+      rethrow;
+    }
   }
 
   void _setupClientCallbacks() {

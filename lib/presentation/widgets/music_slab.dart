@@ -21,15 +21,24 @@ class MusicSlab extends StatelessWidget {
 
     final inOnlineParty = onlineVM.room != null;
     final inHotspotParty = hotspotVM.isHost || hotspotVM.isClient;
-    final isAnyHost = (inOnlineParty && onlineVM.isHost) || (inHotspotParty && hotspotVM.isHost);
-    final isAnyClientOnly = (inOnlineParty && !onlineVM.isHost) || (inHotspotParty && hotspotVM.isClient);
+    final inAnyParty = inOnlineParty || inHotspotParty;
 
-    final toggleEnabled = !inOnlineParty && !inHotspotParty || isAnyHost;
-    final skipEnabled = !inOnlineParty && !inHotspotParty  || !(inOnlineParty && !onlineVM.isHost);
+    const toggleEnabled = true;
+    final skipEnabled = !inAnyParty;
 
-    final onToggle = inHotspotParty
-        ? hotspotVM.hostTogglePlayPause
-        : playback.togglePlayPause;
+    Future<void> onToggle() async {
+      if (inHotspotParty) {
+        await hotspotVM.hostTogglePlayPause();
+      } else if (inOnlineParty) {
+        if (onlineVM.isHost) {
+          await onlineVM.hostTogglePlayPause();
+        } else {
+          await playback.togglePlayPause();
+        }
+      } else {
+        await playback.togglePlayPause();
+      }
+    }
 
     return GestureDetector(
       onTap: () {
@@ -90,25 +99,31 @@ class MusicSlab extends StatelessWidget {
                               child: Icon(Icons.groups, size: 14, color: Colors.white70),
                             ),
                           Expanded(
-                            child: Text(song.title,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                    fontSize: 15, fontWeight: FontWeight.w600, color: Colors.white)),
+                            child: Text(
+                              song.title,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                  fontSize: 15, fontWeight: FontWeight.w600, color: Colors.white),
+                            ),
                           ),
                         ],
                       ),
-                      Text(song.subtitle,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(fontSize: 12, color: Colors.white70)),
+                      Text(
+                        song.subtitle,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(fontSize: 12, color: Colors.white70),
+                      ),
                     ],
                   ),
                 ),
                 IconButton(
-                  onPressed: skipEnabled ? playback.playPrevious : null,
-                  icon: Icon(CupertinoIcons.backward_fill,
-                      color: skipEnabled ? Colors.white : Colors.white38),
+                  onPressed: skipEnabled && playback.hasPrevious ? playback.playPrevious : null,
+                  icon: Icon(
+                    CupertinoIcons.backward_fill,
+                    color: (skipEnabled && playback.hasPrevious) ? Colors.white : Colors.grey,
+                  ),
                 ),
                 StreamBuilder(
                   stream: playback.playerStateStream,
@@ -118,15 +133,17 @@ class MusicSlab extends StatelessWidget {
                       onPressed: toggleEnabled ? onToggle : null,
                       icon: Icon(
                         playing ? CupertinoIcons.pause_fill : CupertinoIcons.play_fill,
-                        color: toggleEnabled ? Colors.white : Colors.white38,
+                        color: toggleEnabled ? Colors.white : Colors.grey,
                       ),
                     );
                   },
                 ),
                 IconButton(
-                  onPressed: skipEnabled ? playback.playNext : null,
-                  icon: Icon(CupertinoIcons.forward_fill,
-                      color: skipEnabled ? Colors.white : Colors.white38),
+                  onPressed: skipEnabled && playback.hasNext ? playback.playNext : null,
+                  icon: Icon(
+                    CupertinoIcons.forward_fill,
+                    color: (skipEnabled && playback.hasNext) ? Colors.white : Colors.grey,
+                  ),
                 ),
               ],
             ),
