@@ -43,7 +43,7 @@ class _LocalSongsTabState extends State<LocalSongsTab> {
           const Padding(
             padding: EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
             child: Text(
-              'Pause the music once after changing songs to share it in a Hotspot party.',
+              'As host, tap any song to share it instantly with your Hotspot party.',
               style: TextStyle(
                 fontSize: 12,
                 color: Colors.grey,
@@ -107,8 +107,6 @@ class _LocalSongsTabState extends State<LocalSongsTab> {
                   if (hotspotVM.isHost) {
                     try {
                       await hotspotVM.playLocalSongAsHost(song);
-                      await hotspotVM.hostTogglePlayPause();
-                      // properly awaited
                     } catch (e) {
                       if (context.mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(

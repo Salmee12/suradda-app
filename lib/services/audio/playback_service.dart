@@ -1,5 +1,7 @@
 // lib/services/audio/playback_service.dart
 
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:just_audio/just_audio.dart';
 import '../../data/models/playable_track.dart';
@@ -87,7 +89,7 @@ class PlaybackService extends ChangeNotifier {
       if (requestId != _playRequestId) return;
       await _player.setUrl(streamUrl);
       if (requestId != _playRequestId) return;
-      await _player.play();
+      _startPlayback();
     } catch (e) {
       if (requestId != _playRequestId) return;
       rethrow;
@@ -115,7 +117,7 @@ class PlaybackService extends ChangeNotifier {
       if (requestId != _playRequestId) return;
       await _player.setUrl(song.playUrl);
       if (requestId != _playRequestId) return;
-      await _player.play();
+      _startPlayback();
     } catch (e) {
       if (requestId != _playRequestId) return;
       rethrow;
@@ -131,7 +133,7 @@ class PlaybackService extends ChangeNotifier {
     if (requestId != _playRequestId) return;
     await _player.setUrl(_queue[_currentIndex].playUrl);
     if (requestId != _playRequestId) return;
-    await _player.play();
+    _startPlayback();
   }
 
   Future<void> playPrevious() async {
@@ -143,7 +145,20 @@ class PlaybackService extends ChangeNotifier {
     if (requestId != _playRequestId) return;
     await _player.setUrl(_queue[_currentIndex].playUrl);
     if (requestId != _playRequestId) return;
-    await _player.play();
+    _startPlayback();
+  }
+
+  /// Starts playback WITHOUT awaiting completion.
+  ///
+  /// just_audio's [AudioPlayer.play] returns a Future that only completes when
+  /// playback is paused, stopped, or the track ends — NOT when it starts.
+  /// Awaiting it would suspend the caller for the entire track, deferring any
+  /// work that runs afterwards (broadcasting a new track to a room, clearing a
+  /// re-entrancy guard, etc.). So we fire it and forget it, logging errors.
+  void _startPlayback() {
+    unawaited(_player.play().catchError((Object e) {
+      debugPrint('PlaybackService: play() failed: $e');
+    }));
   }
 
   Future<void> pause() async {
@@ -152,7 +167,11 @@ class PlaybackService extends ChangeNotifier {
   }
 
   Future<void> resume() async {
-    await _player.play();
+    // Guard against a stale RESUME arriving before any track is loaded (e.g. a
+    // client that just joined and cleared its queue). Without this the player
+    // could replay whatever source was last loaded. See clearQueue().
+    if (currentSong == null) return;
+    _startPlayback();
     notifyListeners();
   }
 

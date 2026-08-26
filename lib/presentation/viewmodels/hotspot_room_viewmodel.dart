@@ -84,13 +84,6 @@ class HotspotRoomViewModel extends ChangeNotifier {
         artist: song.subtitle,
       );
 
-      // NEW: nudge clients with an explicit RESUME after SYNC_TRACK.
-      // This does NOT touch the host's own local playback state — it
-      // only causes clients to re-issue play() on the stream they've
-      // just loaded, which is what your manual pause/play test was
-      // effectively doing.
-      hostService.broadcastPlayState(true, 0);
-
       debugPrint('[HotspotVM] Track broadcast complete for: ${song.title}');
       notifyListeners();
     } finally {
