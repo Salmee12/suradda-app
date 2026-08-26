@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/navigation/app_scaffold_key.dart';
+import '../../../core/theme/app_colors.dart';
 import '../../../services/audio/playback_service.dart';
 import '../../viewmodels/hotspot_room_viewmodel.dart';
 import '../../viewmodels/online_room_viewmodel.dart';
@@ -97,9 +98,9 @@ class RadioPage extends StatelessWidget {
                               boxShadow: [
                                 BoxShadow(
                                   color: radioVM.isPowerOn
-                                      ? Theme.of(context).primaryColor.withOpacity(0.3)
-                                      : Colors.black12,
-                                  blurRadius: 20,
+                                      ? Theme.of(context).primaryColor.withValues(alpha: 0.35)
+                                      : Colors.black26,
+                                  blurRadius: 28,
                                   spreadRadius: 2,
                                 ),
                               ],
@@ -136,7 +137,7 @@ class RadioPage extends StatelessWidget {
                           const SizedBox(height: 8),
                           Text(
                             station.tags.isNotEmpty ? station.tags : 'Global Radio Station',
-                            style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+                            style: const TextStyle(fontSize: 14, color: AppColors.textSecondary),
                             textAlign: TextAlign.center,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -148,18 +149,21 @@ class RadioPage extends StatelessWidget {
                             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
                             decoration: BoxDecoration(
                               color: radioVM.isPowerOn
-                                  ? (radioVM.isBuffering ? Colors.orange : Colors.green)
-                                  : Colors.grey[400],
+                                  ? (radioVM.isBuffering ? Colors.orange : AppColors.primary)
+                                  : Colors.grey[700],
                               borderRadius: BorderRadius.circular(20),
                             ),
                             child: Text(
                               radioVM.isPowerOn
                                   ? (radioVM.isBuffering ? 'CONNECTING...' : 'LIVE')
                                   : 'OFF',
-                              style: const TextStyle(
-                                color: Colors.white,
+                              style: TextStyle(
+                                color: (radioVM.isPowerOn && !radioVM.isBuffering)
+                                    ? Colors.black
+                                    : Colors.white,
                                 fontWeight: FontWeight.bold,
                                 fontSize: 12,
+                                letterSpacing: 0.5,
                               ),
                             ),
                           ),
@@ -186,13 +190,13 @@ class RadioPage extends StatelessWidget {
                                   decoration: BoxDecoration(
                                     shape: BoxShape.circle,
                                     color: radioVM.isPowerOn
-                                        ? Colors.redAccent
+                                        ? AppColors.primary
                                         : Theme.of(context).colorScheme.surfaceContainerHighest,
                                     boxShadow: radioVM.isPowerOn
                                         ? [
                                       BoxShadow(
-                                        color: Colors.redAccent.withOpacity(0.5),
-                                        blurRadius: 15,
+                                        color: AppColors.primary.withValues(alpha: 0.5),
+                                        blurRadius: 18,
                                         spreadRadius: 1,
                                       )
                                     ]
@@ -201,7 +205,7 @@ class RadioPage extends StatelessWidget {
                                   child: Icon(
                                     Icons.power_settings_new_rounded,
                                     size: 38,
-                                    color: radioVM.isPowerOn ? Colors.white : Colors.grey[700],
+                                    color: radioVM.isPowerOn ? Colors.black : AppColors.textSecondary,
                                   ),
                                 ),
                               ),

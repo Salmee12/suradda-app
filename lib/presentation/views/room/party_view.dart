@@ -31,14 +31,18 @@ class PartyView extends StatelessWidget {
           // Now playing
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.all(20),
-            color: Theme.of(context).colorScheme.surfaceContainerHighest,
+            margin: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surfaceContainerHighest,
+              borderRadius: BorderRadius.circular(14),
+            ),
             child: song == null
                 ? const Text('Nothing playing yet')
                 : Row(
               children: [
                 ClipRRect(
-                  borderRadius: BorderRadius.circular(6),
+                  borderRadius: BorderRadius.circular(8),
                   child: song.artworkUrl != null
                       ? Image.network(song.artworkUrl!, width: 56, height: 56, fit: BoxFit.cover)
                       : Container(
@@ -86,10 +90,25 @@ class PartyView extends StatelessWidget {
                 final p = vm.participants[index];
                 final isThisHost = room != null && p.userId == room.hostId;
                 return ListTile(
-                  leading: CircleAvatar(child: Text(p.username[0].toUpperCase())),
+                  leading: CircleAvatar(
+                    backgroundColor: isThisHost
+                        ? Theme.of(context).colorScheme.primary
+                        : Theme.of(context).colorScheme.surfaceContainerHighest,
+                    foregroundColor: isThisHost ? Colors.black : Colors.white,
+                    child: Text(p.username[0].toUpperCase(),
+                        style: const TextStyle(fontWeight: FontWeight.w700)),
+                  ),
                   title: Text(p.username),
                   trailing: isThisHost
-                      ? const Chip(label: Text('Host'), visualDensity: VisualDensity.compact)
+                      ? Chip(
+                          label: const Text('Host'),
+                          visualDensity: VisualDensity.compact,
+                          backgroundColor:
+                              Theme.of(context).colorScheme.primary,
+                          labelStyle: const TextStyle(
+                              color: Colors.black, fontWeight: FontWeight.w700),
+                          side: BorderSide.none,
+                        )
                       : null,
                 );
               },

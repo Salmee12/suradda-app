@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import '../../../core/theme/app_colors.dart';
 import '../../../services/audio/playback_service.dart';
 import '../../viewmodels/hotspot_room_viewmodel.dart';
 import '../../viewmodels/library_viewmodel.dart';
@@ -137,23 +138,36 @@ class _CloudSongsTabState extends State<CloudSongsTab> {
             itemBuilder: (context, index) {
               final song = filteredSongs[index];
               return ListTile(
+                contentPadding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                 leading: ClipRRect(
                   borderRadius: BorderRadius.circular(6),
                   child: CachedNetworkImage(
                     imageUrl: song.thumbnailUrl,
-                    width: 48,
-                    height: 48,
+                    width: 52,
+                    height: 52,
                     fit: BoxFit.cover,
                     placeholder: (context, url) => const SizedBox(
-                      width: 48,
-                      height: 48,
+                      width: 52,
+                      height: 52,
                       child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
                     ),
-                    errorWidget: (context, url, error) => const Icon(Icons.music_note),
+                    errorWidget: (context, url, error) => Container(
+                      width: 52,
+                      height: 52,
+                      color: AppColors.card,
+                      child: const Icon(Icons.music_note, color: AppColors.textSecondary),
+                    ),
                   ),
                 ),
-                title: Text(song.songName, maxLines: 1, overflow: TextOverflow.ellipsis),
-                subtitle: Text(song.artist, maxLines: 1, overflow: TextOverflow.ellipsis),
+                title: Text(song.songName,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontWeight: FontWeight.w600)),
+                subtitle: Text(song.artist,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(color: AppColors.textSecondary)),
                 onTap: () async {
                   final roomVM = context.read<OnlineRoomViewModel>();
                   final hotspotVM = context.read<HotspotRoomViewModel>();

@@ -27,8 +27,12 @@ class HotspotRoomPage extends StatelessWidget {
         children: [
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-            color: Theme.of(context).colorScheme.surfaceContainerHighest,
+            margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surfaceContainerHighest,
+              borderRadius: BorderRadius.circular(12),
+            ),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -49,8 +53,12 @@ class HotspotRoomPage extends StatelessWidget {
           ),
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.all(20),
-            color: Theme.of(context).colorScheme.surfaceContainerHighest,
+            margin: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surfaceContainerHighest,
+              borderRadius: BorderRadius.circular(16),
+            ),
             child: Column(
               children: [
                 Icon(
@@ -109,8 +117,11 @@ class HotspotRoomPage extends StatelessWidget {
               builder: (context, snapshot) {
                 final playing = snapshot.data?.playing ?? false;
                 return IconButton(
-                  iconSize: 56,
-                  icon: Icon(playing ? Icons.pause_circle : Icons.play_circle),
+                  iconSize: 72,
+                  color: Theme.of(context).colorScheme.primary,
+                  icon: Icon(playing
+                      ? Icons.pause_circle_filled
+                      : Icons.play_circle_fill),
                   onPressed: roomVM.isHost ? roomVM.hostTogglePlayPause : null,
                 );
               },

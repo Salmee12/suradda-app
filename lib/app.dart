@@ -3,6 +3,8 @@ import 'package:provider/provider.dart';
 import 'package:suradda_app/presentation/viewmodels/hotspot_room_viewmodel.dart';
 import 'package:suradda_app/presentation/viewmodels/online_room_viewmodel.dart';
 import 'package:suradda_app/services/streaming/local_stream_host_service.dart';
+import 'core/theme/app_colors.dart';
+import 'core/theme/app_theme.dart';
 import 'di/locator.dart';
 import 'presentation/viewmodels/auth_viewmodel.dart';
 import 'presentation/views/root/root_shell.dart';
@@ -26,10 +28,9 @@ class SurAddaApp extends StatelessWidget {
       child: MaterialApp(
         title: 'SurAdda',
         debugShowCheckedModeBanner: false,
-        theme: ThemeData(
-          colorSchemeSeed: Colors.deepPurple,
-          useMaterial3: true,
-        ),
+        theme: AppTheme.darkTheme,
+        darkTheme: AppTheme.darkTheme,
+        themeMode: ThemeMode.dark,
         home: const AuthGate(),
       ),
     );
@@ -50,7 +51,22 @@ class AuthGate extends StatelessWidget {
             return const LoginPage();
           case AuthStatus.unknown:
             return const Scaffold(
-              body: Center(child: CircularProgressIndicator()),
+              backgroundColor: AppColors.background,
+              body: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.graphic_eq_rounded,
+                        size: 72, color: AppColors.primary),
+                    SizedBox(height: 28),
+                    SizedBox(
+                      width: 26,
+                      height: 26,
+                      child: CircularProgressIndicator(strokeWidth: 2.5),
+                    ),
+                  ],
+                ),
+              ),
             );
         }
       },

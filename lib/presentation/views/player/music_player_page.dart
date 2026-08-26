@@ -106,12 +106,24 @@ class MusicPlayerPage extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(vertical: 20),
                   child: Hero(
                     tag: 'music-image',
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(12),
-                      child: song.artworkUrl != null
-                          ? Image.network(song.artworkUrl!,
-                          fit: BoxFit.cover, width: double.infinity, errorBuilder: (_, _, _) => _fallbackArt())
-                          : _fallbackArt(),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.5),
+                            blurRadius: 32,
+                            offset: const Offset(0, 14),
+                          ),
+                        ],
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(12),
+                        child: song.artworkUrl != null
+                            ? Image.network(song.artworkUrl!,
+                            fit: BoxFit.cover, width: double.infinity, errorBuilder: (_, _, _) => _fallbackArt())
+                            : _fallbackArt(),
+                      ),
                     ),
                   ),
                 ),

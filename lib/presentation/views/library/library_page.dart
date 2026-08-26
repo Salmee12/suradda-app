@@ -17,12 +17,20 @@ class LibraryPage extends StatelessWidget {
         length: 2,
         child: Scaffold(
           appBar: AppBar(
-            leading: IconButton(
+            centerTitle: false,
+            titleSpacing: 4,
+          /*  leading: IconButton(
               icon: const Icon(Icons.menu),
               onPressed: () => rootScaffoldKey.currentState?.openDrawer(),
+            ),*/
+            title: const Text(
+              'Your Library',
+              style: TextStyle(fontWeight: FontWeight.w800, fontSize: 22),
             ),
-            title: const Text('Music Library'),
             bottom: const TabBar(
+              isScrollable: true,
+              tabAlignment: TabAlignment.start,
+              indicatorSize: TabBarIndicatorSize.label,
               tabs: [
                 Tab(text: 'Cloud'),
                 Tab(text: 'Local'),

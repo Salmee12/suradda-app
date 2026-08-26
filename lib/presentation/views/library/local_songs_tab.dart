@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:on_audio_query/on_audio_query.dart';
+import '../../../core/theme/app_colors.dart';
 import '../../viewmodels/library_viewmodel.dart';
 import '../../viewmodels/hotspot_room_viewmodel.dart';
 import '../../viewmodels/online_room_viewmodel.dart';
@@ -57,17 +58,33 @@ class _LocalSongsTabState extends State<LocalSongsTab> {
             itemBuilder: (context, index) {
               final song = libraryVM.localSongs[index];
               return ListTile(
+                contentPadding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                 leading: QueryArtworkWidget(
                   id: song.id,
                   type: ArtworkType.AUDIO,
-                  nullArtworkWidget: const Icon(Icons.music_note),
+                  nullArtworkWidget: Container(
+                    width: 52,
+                    height: 52,
+                    decoration: BoxDecoration(
+                      color: AppColors.card,
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: const Icon(Icons.music_note, color: AppColors.textSecondary),
+                  ),
                   artworkFit: BoxFit.cover,
-                  artworkWidth: 48,
-                  artworkHeight: 48,
+                  artworkWidth: 52,
+                  artworkHeight: 52,
                   artworkBorder: BorderRadius.circular(6),
                 ),
-                title: Text(song.title, maxLines: 1, overflow: TextOverflow.ellipsis),
-                subtitle: Text(song.subtitle, maxLines: 1, overflow: TextOverflow.ellipsis),
+                title: Text(song.title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontWeight: FontWeight.w600)),
+                subtitle: Text(song.subtitle,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(color: AppColors.textSecondary)),
                 onTap: () async {
                   final roomVM = context.read<OnlineRoomViewModel>();
                   final hotspotVM = context.read<HotspotRoomViewModel>();

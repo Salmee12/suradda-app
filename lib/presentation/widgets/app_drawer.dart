@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/theme/app_colors.dart';
 
 class AppDrawer extends StatelessWidget {
   const AppDrawer({super.key});
@@ -6,21 +7,29 @@ class AppDrawer extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Drawer(
+      backgroundColor: AppColors.surface,
       child: SafeArea(
         child: Column(
           children: [
             const UserAccountsDrawerHeader(
-              accountName: Text('User Profile'), // placeholder — wire up later
+              decoration: BoxDecoration(color: AppColors.card),
+              accountName: Text(
+                'User Profile',
+                style: TextStyle(fontWeight: FontWeight.w700),
+              ), // placeholder — wire up later
               accountEmail: Text(''),
               currentAccountPicture: CircleAvatar(
-                child: Icon(Icons.person),
+                backgroundColor: AppColors.primary,
+                child: Icon(Icons.person, color: Colors.black),
               ),
             ),
             const Spacer(),
             const Divider(),
             ListTile(
-              leading: const Icon(Icons.cancel_outlined, color: Colors.red),
-              title: const Text('Unsubscribe', style: TextStyle(color: Colors.red)),
+              leading: const Icon(Icons.cancel_outlined, color: AppColors.error),
+              title: const Text('Unsubscribe',
+                  style: TextStyle(
+                      color: AppColors.error, fontWeight: FontWeight.w600)),
               onTap: () {
                 // placeholder — wire up bdapps check_subscription/unsubscribe later
               },
