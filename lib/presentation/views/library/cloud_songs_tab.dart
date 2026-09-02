@@ -100,10 +100,12 @@ class _CloudSongsTabState extends State<CloudSongsTab> {
                 ),
               ),
               const SizedBox(height: 8),
-              Row(
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
                   const Text('Search by: ', style: TextStyle(color: Colors.grey, fontSize: 13)),
-                  const SizedBox(width: 8),
                   ChoiceChip(
                     label: const Text('Title'),
                     selected: _selectedFilter == SearchFilter.title,
@@ -113,7 +115,6 @@ class _CloudSongsTabState extends State<CloudSongsTab> {
                       }
                     },
                   ),
-                  const SizedBox(width: 8),
                   ChoiceChip(
                     label: const Text('Artist'),
                     selected: _selectedFilter == SearchFilter.artist,
@@ -168,13 +169,58 @@ class _CloudSongsTabState extends State<CloudSongsTab> {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(color: AppColors.textSecondary)),
+                trailing: SizedBox(
+                  width: 40,
+                  child: libraryVM.isDownloading(song.id)
+                      ? const Center(
+                          child: SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
+                        )
+                      : IconButton(
+                          icon: Icon(
+                            libraryVM.isDownloaded(song.id)
+                                ? Icons.download_done
+                                : Icons.download_outlined,
+                            color: libraryVM.isDownloaded(song.id)
+                                ? AppColors.primary
+                                : null,
+                          ),
+                          tooltip: libraryVM.isDownloaded(song.id)
+                              ? 'Downloaded'
+                              : 'Download to device',
+                          onPressed: libraryVM.isDownloaded(song.id)
+                              ? null
+                              : () async {
+                                  final messenger =
+                                      ScaffoldMessenger.of(context);
+                                  final result =
+                                      await libraryVM.downloadSong(song);
+                                  messenger.showSnackBar(
+                                    SnackBar(
+                                      duration: Duration(
+                                          seconds: result.success ? 2 : 6),
+                                      content: Text(result.success
+                                          ? 'Downloaded to your Local library'
+                                          : 'Download failed: ${result.error ?? 'unknown error'}'),
+                                    ),
+                                  );
+                                },
+                        ),
+                ),
                 onTap: () async {
+                  // Captured before any await: the tile can be disposed while
+                  // player.pause() is in flight, and ScaffoldMessenger.of()
+                  // would then throw on a deactivated context.
+                  final messenger = ScaffoldMessenger.of(context);
                   final roomVM = context.read<OnlineRoomViewModel>();
                   final hotspotVM = context.read<HotspotRoomViewModel>();
                   final playback = context.read<PlaybackService>();
 
                   if (hotspotVM.isHost || hotspotVM.isClient) {
-                    ScaffoldMessenger.of(context).showSnackBar(
+                    messenger.showSnackBar(
                       const SnackBar(content: Text('Cloud songs aren\'t available in a Hotspot party')),
                     );
                     return;
@@ -184,14 +230,14 @@ class _CloudSongsTabState extends State<CloudSongsTab> {
                     if (roomVM.isHost) {
                       await playback.player.pause();
                       if (playback.player.playing) {
-                        ScaffoldMessenger.of(context).showSnackBar(
+                        messenger.showSnackBar(
                           const SnackBar(content: Text('Tap again to change the song')),
                         );
                       } else {
                         roomVM.hostPlaySong(song, queue: filteredSongs);
                       }
                     } else {
-                      ScaffoldMessenger.of(context).showSnackBar(
+                      messenger.showSnackBar(
                         const SnackBar(content: Text('Only the host can choose songs during a party')),
                       );
                     }

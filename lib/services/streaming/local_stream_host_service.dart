@@ -3,8 +3,6 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:bonsoir/bonsoir.dart';
 import 'package:flutter/foundation.dart';
-import 'package:suradda_app/data/models/user_model.dart';
-
 
 class LocalStreamHostService extends ChangeNotifier {
   HttpServer? _server;
@@ -26,7 +24,7 @@ class LocalStreamHostService extends ChangeNotifier {
   bool get isPlaying => _isPlaying;
   int get currentPositionMs => _currentPositionMs;
 
-  Future<void> startHost({int port = 8090}) async {
+  Future<void> startHost({int port = 8090, String partyName = 'Suradda Hotspot Party'}) async {
     if (_server != null) return;
 
     _server = await HttpServer.bind(InternetAddress.anyIPv4, port);
@@ -45,7 +43,7 @@ class LocalStreamHostService extends ChangeNotifier {
 
     try {
       final service = BonsoirService(
-        name: 'Suradda Hotspot Party',
+        name: partyName,
         type: '_suradda._tcp',
         port: port,
       );
@@ -120,6 +118,9 @@ class LocalStreamHostService extends ChangeNotifier {
     if (WebSocketTransformer.isUpgradeRequest(request)) {
       final socket = await WebSocketTransformer.upgrade(request);
       _sockets.add(socket);
+      // Protocol-level keepalive so a listener whose phone leaves the network is
+      // dropped from the count instead of lingering as a half-open socket.
+      socket.pingInterval = const Duration(seconds: 30);
       notifyListeners(); // NEW — reflect the new listener count immediately
 
       if (_currentTrackId != null) {

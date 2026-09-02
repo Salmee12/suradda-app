@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../../core/navigation/app_scaffold_key.dart';
 import '../../viewmodels/online_room_viewmodel.dart';
+import '../../viewmodels/room_connection.dart';
+import '../../widgets/connection_banner.dart';
 import '../../../services/audio/playback_service.dart';
 
 class PartyView extends StatelessWidget {
@@ -13,6 +14,7 @@ class PartyView extends StatelessWidget {
     final playback = context.watch<PlaybackService>();
     final room = vm.room;
     final song = playback.currentSong;
+    final offline = vm.connection.isBroken;
 
     return Scaffold(
       appBar: AppBar(
@@ -28,6 +30,11 @@ class PartyView extends StatelessWidget {
       ),
       body: Column(
         children: [
+          ConnectionBanner(
+            connection: vm.connection,
+            onRetry: vm.retryConnection,
+            onLeave: vm.leaveParty,
+          ),
           // Now playing
           Container(
             width: double.infinity,
@@ -70,6 +77,15 @@ class PartyView extends StatelessWidget {
               ],
             ),
           ),
+          if (vm.isHost && song == null)
+            const Padding(
+              padding: EdgeInsets.fromLTRB(16, 0, 16, 8),
+              child: Text(
+                'Wait for everyone to join, then pick a song from the Library — songs chosen before a member joins won\'t reach them.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.grey, fontSize: 12),
+              ),
+            ),
           Padding(
             padding: const EdgeInsets.all(16),
             child: Row(
@@ -78,6 +94,13 @@ class PartyView extends StatelessWidget {
                 const SizedBox(width: 6),
                 Text('${vm.participants.length} in this party',
                     style: const TextStyle(fontWeight: FontWeight.w600)),
+                if (offline) ...[
+                  const SizedBox(width: 6),
+                  const Expanded(
+                    child: Text('(may be out of date)',
+                        style: TextStyle(color: Colors.grey, fontSize: 11)),
+                  ),
+                ],
               ],
             ),
           ),

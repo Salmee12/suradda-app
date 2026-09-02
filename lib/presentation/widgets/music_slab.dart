@@ -17,7 +17,12 @@ class MusicSlab extends StatelessWidget {
     final hotspotVM = context.watch<HotspotRoomViewModel>();
     final song = playback.currentSong;
 
-    if (song == null) return const SizedBox.shrink();
+    // Live radio deliberately gets no slab. It shares the one AudioPlayer with
+    // music, but it has no duration to draw a progress bar from and no queue to
+    // skip through, and it is driven only by the Radio tab's power button.
+    // Hiding the slab also makes MusicPlayerPage unreachable, since tapping the
+    // slab is the only route in.
+    if (song == null || playback.isLiveRadio) return const SizedBox.shrink();
 
     final inOnlineParty = onlineVM.room != null;
     final inHotspotParty = hotspotVM.isHost || hotspotVM.isClient;

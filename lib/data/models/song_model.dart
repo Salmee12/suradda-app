@@ -39,6 +39,4 @@ class SongModel implements PlayableTrack {
   String get playUrl => songUrl;
   @override
   String? get artworkUrl => thumbnailUrl;
-  @override
-  String get bgColor => this.hexCode;
 }

@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../viewmodels/auth_viewmodel.dart';
-import '../root/root_shell.dart';
 import 'register_page.dart';
 
 class LoginPage extends StatefulWidget {
@@ -80,15 +79,15 @@ class _LoginPageState extends State<LoginPage> {
                     ? const Center(child: CircularProgressIndicator())
                     : ElevatedButton(
                         onPressed: () async {
-                          final success = await authVM.login(
+                          // No navigation here: AuthGate watches AuthViewModel and
+                          // swaps LoginPage for RootShell as soon as login() flips
+                          // status to authenticated. Pushing a RootShell as well
+                          // would stack a second one over AuthGate's, and logging
+                          // out would leave it on screen.
+                          await authVM.login(
                             username: _usernameController.text.trim(),
                             password: _passwordController.text,
                           );
-                          if (success && context.mounted) {
-                            Navigator.of(context).pushReplacement(
-                              MaterialPageRoute(builder: (_) => const RootShell()),
-                            );
-                          }
                         },
                         child: const Text('Log In'),
                       ),

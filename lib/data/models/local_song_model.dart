@@ -1,6 +1,5 @@
 import 'package:on_audio_query/on_audio_query.dart' as oaq;
 import 'package:suradda_app/data/models/playable_track.dart';
-import 'song_model.dart';
 
 class LocalSongModel implements PlayableTrack {
   final int id;

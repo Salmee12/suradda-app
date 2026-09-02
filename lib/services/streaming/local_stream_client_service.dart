@@ -4,8 +4,6 @@ import 'dart:io';
 import 'package:bonsoir/bonsoir.dart';
 import 'package:flutter/foundation.dart';
 
-import '../audio/playback_service.dart';
-
 class DiscoveredHost {
   final String name;
   final String hostIp;
@@ -37,6 +35,14 @@ class LocalStreamClientService {
   Function()? onPause;
   Function()? onResume;
   Function(int positionMs)? onSeek;
+
+  /// Fires when the control socket goes away on its own (host left, WiFi died,
+  /// keepalive timed out). Does NOT fire for a deliberate [disconnect].
+  Function()? onDisconnected;
+
+  bool _closingIntentionally = false;
+
+  bool get isConnected => _controlSocket != null;
 
 
 
@@ -96,11 +102,26 @@ class LocalStreamClientService {
 
     try {
       final wsUrl = 'ws://$hostIp:$port/control';
-      _controlSocket = await WebSocket.connect(wsUrl);
+      final socket = await WebSocket.connect(wsUrl);
+      _controlSocket = socket;
+      _closingIntentionally = false;
+
+      // Protocol-level keepalive. dart:io closes the socket if the host stops
+      // answering pings within this interval, so a host that vanishes without a
+      // close frame (WiFi drop, app killed, phone asleep) is detected in
+      // seconds instead of leaving a half-open socket that looks alive forever.
+      socket.pingInterval = const Duration(seconds: 15);
       debugPrint('Connected to host WebSocket control: $wsUrl');
 
-      _controlSocket!.listen((rawMessage) {
-        final data = jsonDecode(rawMessage as String);
+      socket.listen((rawMessage) {
+        final Map<String, dynamic> data;
+        try {
+          data = jsonDecode(rawMessage as String) as Map<String, dynamic>;
+        } catch (e) {
+          // A malformed frame must not kill the whole control stream.
+          debugPrint('Ignoring malformed control message from host: $e');
+          return;
+        }
         final action = data['action'] as String?;
 
         switch (action) {
@@ -126,12 +147,25 @@ class LocalStreamClientService {
             onSeek?.call(data['positionMs'] ?? 0);
             break;
         }
-      }, onDone: () {
-        debugPrint('Disconnected from host.');
-      });
+      },
+        onDone: () => _handleDrop('host closed the connection'),
+        onError: (e) => _handleDrop('socket error: $e'),
+        cancelOnError: true,
+      );
     } catch (e) {
       debugPrint('Failed to connect to host WebSocket: $e');
-      rethrow;    }
+      _controlSocket = null;
+      rethrow;
+    }
+  }
+
+  /// Single exit point for an unplanned loss of the control socket.
+  void _handleDrop(String reason) {
+    if (_controlSocket == null) return; // Already handled.
+    debugPrint('Disconnected from host ($reason)');
+    _controlSocket = null;
+    if (_closingIntentionally) return;
+    onDisconnected?.call();
   }
 
   Future<void> stopDiscovery() async {
@@ -146,11 +180,14 @@ class LocalStreamClientService {
     _discovery = null;
   }
 
+  /// Closes the control socket on purpose. [onDisconnected] will NOT fire.
   Future<void> disconnect() async {
-    try {
-      await _controlSocket?.close();
-    } catch (_) {}
+    _closingIntentionally = true;
+    final socket = _controlSocket;
     _controlSocket = null;
+    try {
+      await socket?.close();
+    } catch (_) {}
   }
 
   void dispose() {

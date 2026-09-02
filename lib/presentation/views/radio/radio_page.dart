@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../../core/navigation/app_scaffold_key.dart';
+import '../../../core/navigation/root_navigation.dart';
 import '../../../core/theme/app_colors.dart';
-import '../../../services/audio/playback_service.dart';
+import '../../../data/models/radio_model.dart';
+import '../../../di/locator.dart';
 import '../../viewmodels/hotspot_room_viewmodel.dart';
 import '../../viewmodels/online_room_viewmodel.dart';
 import '../../viewmodels/radio_viewmodel.dart';
@@ -11,16 +12,13 @@ class RadioPage extends StatelessWidget {
   const RadioPage({super.key});
 
   Future<void> _handlePowerToggle(BuildContext context, RadioViewModel radioVM) async {
-    final onlineVM = context.read<OnlineRoomViewModel>();
-    final hotspotVM = context.read<HotspotRoomViewModel>();
-    final playback = context.read<PlaybackService>();
-
-    final inOnlineRoom = onlineVM.room != null;
-    final inHotspotRoom = hotspotVM.isHost || hotspotVM.isClient;
-    final inAnyRoom = inOnlineRoom || inHotspotRoom;
-
-    // Checks when attempting to turn the radio ON
+    // Only switching ON needs a guard; switching off is always allowed.
     if (!radioVM.isPowerOn) {
+      final onlineVM = context.read<OnlineRoomViewModel>();
+      final hotspotVM = context.read<HotspotRoomViewModel>();
+      final inAnyRoom =
+          onlineVM.room != null || hotspotVM.isHost || hotspotVM.isClient;
+
       if (inAnyRoom) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -29,28 +27,29 @@ class RadioPage extends StatelessWidget {
         );
         return;
       }
-
-      // Stop active music player if playing outside of a room
-      if (playback.player.playing || playback.currentSong != null) {
-        await playback.player.stop();
-      }
     }
 
+    // No explicit stop of the music player: radio and music share the one
+    // AudioPlayer, so tuning a station replaces whatever was playing.
     await radioVM.togglePower();
   }
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (_) => RadioViewModel(),
+    // .value, not create: the VM is a locator singleton so the radio survives
+    // this page being disposed on a tab switch. ChangeNotifierProvider.value
+    // also won't dispose it, which is what we want for a shared instance.
+    return ChangeNotifierProvider<RadioViewModel>.value(
+      value: locator<RadioViewModel>(),
       child: Scaffold(
         appBar: AppBar(
-          /* leading: IconButton(
+          leading: IconButton(
             icon: const Icon(Icons.menu),
-            onPressed: () => rootScaffoldKey.currentState?.openDrawer(),
-          ),*/
+            onPressed: RootNavigation.of(context).openDrawer,
+          ),
           title: const Text('Live Radio'),
           centerTitle: true,
+          actions: const [_RegionPicker()],
         ),
         body: Consumer<RadioViewModel>(
           builder: (context, radioVM, child) {
@@ -111,7 +110,7 @@ class RadioPage extends StatelessWidget {
                                   ? Image.network(
                                 station.favicon,
                                 fit: BoxFit.cover,
-                                errorBuilder: (_, __, ___) => const Icon(
+                                errorBuilder: (_, _, _) => const Icon(
                                   Icons.radio,
                                   size: 80,
                                   color: Colors.grey,
@@ -226,6 +225,42 @@ class RadioPage extends StatelessWidget {
               },
             );
           },
+        ),
+      ),
+    );
+  }
+}
+
+/// AppBar dropdown that switches the station list between regions.
+///
+/// A [Consumer] rather than `context.watch`: the AppBar is built with
+/// RadioPage's own context, which sits *above* the ChangeNotifierProvider, so a
+/// direct lookup wouldn't find the RadioViewModel.
+class _RegionPicker extends StatelessWidget {
+  const _RegionPicker();
+
+  @override
+  Widget build(BuildContext context) {
+    return Consumer<RadioViewModel>(
+      builder: (context, radioVM, _) => Padding(
+        padding: const EdgeInsets.only(right: 8),
+        child: DropdownButtonHideUnderline(
+          child: DropdownButton<RadioRegion>(
+            value: radioVM.region,
+            // Disabled mid-fetch so two region loads can't race each other.
+            onChanged: radioVM.isLoading
+                ? null
+                : (region) {
+                    if (region != null) radioVM.setRegion(region);
+                  },
+            borderRadius: BorderRadius.circular(12),
+            dropdownColor: AppColors.card,
+            style: const TextStyle(fontSize: 14, color: Colors.white),
+            items: [
+              for (final region in RadioRegion.values)
+                DropdownMenuItem(value: region, child: Text(region.label)),
+            ],
+          ),
         ),
       ),
     );

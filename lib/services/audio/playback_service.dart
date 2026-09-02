@@ -4,6 +4,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:just_audio/just_audio.dart';
+import 'package:just_audio_background/just_audio_background.dart';
 import '../../data/models/playable_track.dart';
 import '../../data/models/radio_model.dart';
 
@@ -18,15 +19,20 @@ class HotspotStreamTrack implements PlayableTrack {
   @override
   final String playUrl;
 
+  /// Optional remote image for the media notification. Hotspot streams have
+  /// none; radio stations supply their station logo.
+  final String? artwork;
+
   HotspotStreamTrack({
     required this.trackId,
     required this.title,
     required this.subtitle,
     required this.playUrl,
+    this.artwork,
   });
 
   @override
-  String? get artworkUrl => null;
+  String? get artworkUrl => artwork;
 
   @override
   String get hexCode => '1DB954'; // Accent theme color
@@ -38,6 +44,7 @@ class PlaybackService extends ChangeNotifier {
   List<PlayableTrack> _queue = [];
   int _currentIndex = -1;
   int _playRequestId = 0;
+  bool _isLiveRadio = false;
 
   PlaybackService() {
     _player.processingStateStream.listen((state) {
@@ -55,14 +62,61 @@ class PlaybackService extends ChangeNotifier {
   bool get hasNext => _currentIndex >= 0 && _currentIndex < _queue.length - 1;
   bool get hasPrevious => _currentIndex > 0;
 
+  /// True while the loaded source is a live radio station rather than a song.
+  ///
+  /// The UI hides the MusicSlab — and with it MusicPlayerPage, which is only
+  /// reachable by tapping the slab — on this flag. A stream reports no
+  /// duration, so the progress bar, seek bar and skip arrows would all be
+  /// meaningless; the radio is driven solely from the Radio tab's power button.
+  bool get isLiveRadio => _isLiveRadio;
+
   void clearQueue() {
     _queue = [];
     _currentIndex = -1;
+    _isLiveRadio = false;
+    // Invalidate any load still in flight, or it would reach _startPlayback()
+    // after this stop and resurrect the source we just dropped.
+    _playRequestId++;
     _player.stop();
     notifyListeners();
   }
 
-  /// Load and play an HTTP stream from the Host
+  /// Stops playback only when what's loaded is live radio; leaves music alone.
+  ///
+  /// Room entry calls this. The radio outlives the Radio tab now, so it can
+  /// still be streaming when a party starts, and a party has no business
+  /// broadcasting a radio station. Callers that want the queue emptied
+  /// regardless use [clearQueue].
+  Future<void> stopLiveRadio() async {
+    if (!_isLiveRadio) return;
+    _isLiveRadio = false;
+    _queue = [];
+    _currentIndex = -1;
+    _playRequestId++;
+    await _player.stop();
+    notifyListeners();
+  }
+
+  /// Wraps a track in an [AudioSource] carrying the [MediaItem] tag that
+  /// just_audio_background needs to populate the media notification.
+  ///
+  /// Every source MUST be tagged — an untagged one throws at load time — so all
+  /// playback goes through here instead of calling `setUrl` directly.
+  AudioSource _sourceFor(PlayableTrack track) {
+    final art = track.artworkUrl;
+    return AudioSource.uri(
+      Uri.parse(track.playUrl),
+      tag: MediaItem(
+        // MediaItem.id must be non-empty; hotspot streams may not carry a
+        // trackId, so fall back to the URL.
+        id: track.trackId.isEmpty ? track.playUrl : track.trackId,
+        title: track.title,
+        artist: track.subtitle,
+        artUri: (art != null && art.startsWith('http')) ? Uri.tryParse(art) : null,
+      ),
+    );
+  }
+
   /// Load and play an HTTP stream from the Host
   Future<void> playStreamTrack({
     required String streamUrl,
@@ -70,24 +124,38 @@ class PlaybackService extends ChangeNotifier {
     required String title,
     required String subtitle,
   }) async {
-    // 1. Update state SYNCHRONOUSLY so all UI widgets update title immediately
-    final streamTrack = HotspotStreamTrack(
-      trackId: trackId,
-      title: title,
-      subtitle: subtitle,
-      playUrl: streamUrl,
+    await _playSingle(
+      HotspotStreamTrack(
+        trackId: trackId,
+        title: title,
+        subtitle: subtitle,
+        playUrl: streamUrl,
+      ),
+      isLiveRadio: false,
     );
+  }
 
-    _queue = [streamTrack];
+  /// Replaces the queue with a single track and loads it.
+  ///
+  /// Shared by the hotspot-stream and radio paths, which both play exactly one
+  /// source that isn't part of a library queue. State is updated synchronously
+  /// before the notify, so every widget sees the new metadata — and
+  /// [isLiveRadio] — on the same frame the load starts, with no window where
+  /// the slab could flash a station it is supposed to hide.
+  Future<void> _playSingle(
+    PlayableTrack track, {
+    required bool isLiveRadio,
+  }) async {
+    _isLiveRadio = isLiveRadio;
+    _queue = [track];
     _currentIndex = 0;
     final requestId = ++_playRequestId;
-    notifyListeners(); // UI rebuilds instantly with the new song metadata
+    notifyListeners();
 
-    // 2. Perform async audio player operations safely
     try {
       await _player.stop();
       if (requestId != _playRequestId) return;
-      await _player.setUrl(streamUrl);
+      await _player.setAudioSource(_sourceFor(track));
       if (requestId != _playRequestId) return;
       _startPlayback();
     } catch (e) {
@@ -98,6 +166,7 @@ class PlaybackService extends ChangeNotifier {
 
   Future<void> playSong(PlayableTrack song, {List<PlayableTrack>? queue}) async {
     // 1. Synchronous state update
+    _isLiveRadio = false;
     if (queue != null) {
       _queue = queue;
       _currentIndex = _queue.indexWhere((s) => s.trackId == song.trackId);
@@ -115,7 +184,7 @@ class PlaybackService extends ChangeNotifier {
     try {
       await _player.stop();
       if (requestId != _playRequestId) return;
-      await _player.setUrl(song.playUrl);
+      await _player.setAudioSource(_sourceFor(song));
       if (requestId != _playRequestId) return;
       _startPlayback();
     } catch (e) {
@@ -131,7 +200,7 @@ class PlaybackService extends ChangeNotifier {
     notifyListeners();
     await _player.stop();
     if (requestId != _playRequestId) return;
-    await _player.setUrl(_queue[_currentIndex].playUrl);
+    await _player.setAudioSource(_sourceFor(_queue[_currentIndex]));
     if (requestId != _playRequestId) return;
     _startPlayback();
   }
@@ -143,7 +212,7 @@ class PlaybackService extends ChangeNotifier {
     notifyListeners();
     await _player.stop();
     if (requestId != _playRequestId) return;
-    await _player.setUrl(_queue[_currentIndex].playUrl);
+    await _player.setAudioSource(_sourceFor(_queue[_currentIndex]));
     if (requestId != _playRequestId) return;
     _startPlayback();
   }
@@ -190,15 +259,25 @@ class PlaybackService extends ChangeNotifier {
   Stream<PlayerState> get playerStateStream => _player.playerStateStream;
 
 
+  /// Tunes the shared player to [station].
+  ///
+  /// The radio cannot own an AudioPlayer of its own: just_audio_background
+  /// permits exactly one per process and this service already holds it, so a
+  /// second player throws "supports only a single player instance" as soon as
+  /// it loads a URL. Sharing this one also gets the radio a media notification
+  /// and background playback for free.
   Future<void> playRadioStation(RadioStation station) async {
-    final radioTrack = HotspotStreamTrack(
-      trackId: station.stationUuid,
-      title: station.name,
-      subtitle: 'Live Radio • ${station.tags}',
-      playUrl: station.streamUrl,
+    final tags = station.tags.trim();
+    await _playSingle(
+      HotspotStreamTrack(
+        trackId: station.stationUuid,
+        title: station.name,
+        subtitle: tags.isEmpty ? 'Live Radio' : 'Live Radio • $tags',
+        playUrl: station.streamUrl,
+        artwork: station.favicon,
+      ),
+      isLiveRadio: true,
     );
-
-    await playSong(radioTrack);
   }
 
   bool get isPlaying => _player.playing;

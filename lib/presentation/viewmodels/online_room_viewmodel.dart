@@ -1,5 +1,5 @@
 import 'dart:async';
-import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
 import '../../data/models/participant_model.dart';
 import '../../data/models/room_model.dart';
 import '../../data/models/song_model.dart';
@@ -8,8 +8,9 @@ import '../../data/repositories/song_repository.dart';
 import '../../services/streaming/online_room_socket_service.dart';
 import '../../services/audio/playback_service.dart';
 import '../../services/auth/token_storage_service.dart';
+import 'room_connection.dart';
 
-class OnlineRoomViewModel extends ChangeNotifier {
+class OnlineRoomViewModel extends ChangeNotifier with WidgetsBindingObserver {
   final RoomRepository roomRepository;
   final SongRepository songRepository;
   final OnlineRoomSocketService socketService;
@@ -22,7 +23,11 @@ class OnlineRoomViewModel extends ChangeNotifier {
       this.socketService,
       this.playbackService,
       this.tokenStorage,
-      );
+      ) {
+    // Backgrounding the app can silently kill the socket; resuming is our cue to
+    // check and rejoin.
+    WidgetsBinding.instance.addObserver(this);
+  }
 
   RoomModel? room;
   bool _isHost = false;
@@ -32,9 +37,18 @@ class OnlineRoomViewModel extends ChangeNotifier {
   String? errorMessage;
   Timer? _syncTimer;
 
+  /// Live socket state. The UI reads this instead of assuming that a non-null
+  /// [room] means the user is still in the party.
+  RoomConnection connection = RoomConnection.idle;
+  Timer? _retryTimer;
+  int _retryAttempt = 0;
+  static const _maxRetries = 4;
+
   bool get isHost => _isHost;
   bool get isToggling => _isToggling; // add this getter
+  bool get isConnected => connection == RoomConnection.connected;
   PlaybackService get playbackServicePublic => playbackService;
+
 
   Future<void> createParty() async {
     isLoading = true;
@@ -44,7 +58,7 @@ class OnlineRoomViewModel extends ChangeNotifier {
       room = await roomRepository.createRoom();
       _isHost = true;
       playbackService.clearQueue(); // party starts with a clean slate
-      await _connectSocket();
+      await _openSocket();
     } catch (e, stack) {
       debugPrint('createParty failed: $e\n$stack');
       errorMessage = 'Could not create party. Please try again.';
@@ -61,7 +75,11 @@ class OnlineRoomViewModel extends ChangeNotifier {
     try {
       room = await roomRepository.joinRoom(code.trim().toUpperCase());
       _isHost = false;
-      await _connectSocket();
+      // A joining client keeps its own song until the host's first sync, but
+      // never its radio: the radio outlives the Radio tab, so it can still be
+      // streaming as the party opens.
+      await playbackService.stopLiveRadio();
+      await _openSocket();
     } catch (e, stack) {
       debugPrint('joinParty failed: $e\n$stack');
       errorMessage = 'Party not found. Check the code and try again.';
@@ -71,45 +89,128 @@ class OnlineRoomViewModel extends ChangeNotifier {
     }
   }
 
-  Future<void> _connectSocket() async {
+  /// First connect after creating/joining. A failure here is reported, not
+  /// retried silently — the user just pressed a button and deserves an answer.
+  Future<void> _openSocket() async {
+    final ok = await _connectSocket();
+    if (!ok) {
+      connection = RoomConnection.disconnected;
+      errorMessage =
+          'You are in the party but the live connection failed. Tap Reconnect.';
+      notifyListeners();
+    }
+  }
+
+  /// Opens the socket. Returns true only if it is genuinely connected.
+  Future<bool> _connectSocket() async {
     final token = await tokenStorage.getAccessToken();
     if (token == null || token.isEmpty) {
       debugPrint('WS Connection Aborted: Access token is null or empty');
       errorMessage = 'Authentication error. Please log in again.';
+      connection = RoomConnection.disconnected;
       notifyListeners();
-      return;
+      return false;
     }
 
     if (room == null) {
       debugPrint('WS Connection Aborted: Room object is null');
+      return false;
+    }
+
+    connection = _retryAttempt == 0
+        ? RoomConnection.connecting
+        : RoomConnection.reconnecting;
+    notifyListeners();
+
+    debugPrint('Connecting to WebSocket for Room ID: ${room!.id}');
+    try {
+      await socketService.connect(
+        roomId: room!.id,
+        accessToken: token,
+        onMessage: _handleMessage,
+        onDisconnected: _handleSocketDrop,
+      );
+    } catch (e) {
+      debugPrint('WS connect failed: $e');
+      return false;
+    }
+
+    connection = RoomConnection.connected;
+    _retryAttempt = 0;
+    if (isHost) _startHostSyncTimer();
+    notifyListeners();
+    return true;
+  }
+
+  void _startHostSyncTimer() {
+    _syncTimer?.cancel();
+    _syncTimer = Timer.periodic(const Duration(seconds: 6), (_) {
+      if (playbackService.isPlaying) {
+
+        final song = playbackService.currentSong;
+        if (song != null && song.trackId != room?.currentSongId) {
+          socketService.sendPlay(songId: song.trackId, positionMs: 0);
+          room = room?.copyWith(currentSongId: song.trackId, isPlaying: true, currentPositionMs: 0);
+          notifyListeners();
+        }
+
+        socketService.sendSyncPosition(
+          positionMs: playbackService.player.position.inMilliseconds,
+        );
+      }
+    });
+  }
+
+  /// The socket died on its own. Stop broadcasting into the void, tell the UI
+  /// the truth, and start trying to get back in.
+  void _handleSocketDrop() {
+    if (room == null) return; // Already left; nothing to recover.
+    debugPrint('Online party socket dropped — entering reconnect');
+    _syncTimer?.cancel();
+    _syncTimer = null;
+    connection = RoomConnection.reconnecting;
+    notifyListeners();
+    _scheduleRetry();
+  }
+
+  void _scheduleRetry() {
+    _retryTimer?.cancel();
+    if (_retryAttempt >= _maxRetries) {
+      debugPrint('Giving up on automatic reconnect after $_retryAttempt tries');
+      connection = RoomConnection.disconnected;
+      notifyListeners();
       return;
     }
 
-    debugPrint('Connecting to WebSocket for Room ID: ${room!.id}');
-    socketService.connect(
-      roomId: room!.id,
-      accessToken: token,
-      onMessage: _handleMessage,
-    );
+    // 2s, 4s, 8s, 16s — long enough to ride out a lift or a WiFi handover
+    // without hammering the server.
+    final delay = Duration(seconds: 2 << _retryAttempt);
+    _retryAttempt++;
+    debugPrint('Retrying party socket in ${delay.inSeconds}s (attempt $_retryAttempt)');
+    _retryTimer = Timer(delay, () async {
+      if (room == null) return;
+      final ok = await _connectSocket();
+      if (!ok) _scheduleRetry();
+    });
+  }
 
-    if (isHost) {
-      _syncTimer?.cancel();
-      _syncTimer = Timer.periodic(const Duration(seconds: 6), (_) {
-        if (playbackService.isPlaying) {
+  /// Manual "Reconnect" from the UI — tries immediately, then falls back to the
+  /// automatic retry ladder.
+  Future<void> retryConnection() async {
+    if (room == null) return;
+    _retryTimer?.cancel();
+    _retryAttempt = 0;
+    errorMessage = null;
+    final ok = await _connectSocket();
+    if (!ok) _scheduleRetry();
+  }
 
-          final song = playbackService.currentSong;
-          if (song != null && song.trackId != room?.currentSongId) {
-            socketService.sendPlay(songId: song.trackId, positionMs: 0);
-            room = room?.copyWith(currentSongId: song.trackId, isPlaying: true, currentPositionMs: 0);
-            notifyListeners();
-          }
-
-          socketService.sendSyncPosition(
-            positionMs: playbackService.player.position.inMilliseconds,
-          );
-        }
-      });
-    }
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state != AppLifecycleState.resumed) return;
+    if (room == null || connection == RoomConnection.connected) return;
+    debugPrint('App resumed with a broken party socket — reconnecting');
+    retryConnection();
   }
 
   void _handleMessage(Map<String, dynamic> data) {
@@ -278,6 +379,10 @@ class OnlineRoomViewModel extends ChangeNotifier {
 
   Future<void> leaveParty() async {
     _syncTimer?.cancel();
+    _syncTimer = null;
+    _retryTimer?.cancel();
+    _retryTimer = null;
+    _retryAttempt = 0;
     socketService.disconnect();
     if (room != null) {
       try {
@@ -288,12 +393,16 @@ class OnlineRoomViewModel extends ChangeNotifier {
     }
     room = null;
     participants = [];
+    connection = RoomConnection.idle;
+    errorMessage = null;
     notifyListeners();
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _syncTimer?.cancel();
+    _retryTimer?.cancel();
     socketService.disconnect();
     super.dispose();
   }

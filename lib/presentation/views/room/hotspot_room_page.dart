@@ -1,16 +1,34 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../viewmodels/hotspot_room_viewmodel.dart';
+import '../../viewmodels/room_connection.dart';
+import '../../widgets/connection_banner.dart';
 import '../../../services/audio/playback_service.dart';
 
 class HotspotRoomPage extends StatelessWidget {
   const HotspotRoomPage({super.key});
+
+  String _clientStatus(HotspotRoomViewModel vm) {
+    final hostName = vm.connectedHost?.name ?? 'the host';
+    switch (vm.connection) {
+      case RoomConnection.connected:
+        return 'Connected to $hostName';
+      case RoomConnection.connecting:
+        return 'Connecting to $hostName...';
+      case RoomConnection.reconnecting:
+        return 'Reconnecting to $hostName...';
+      case RoomConnection.disconnected:
+      case RoomConnection.idle:
+        return 'Disconnected from $hostName';
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final roomVM = context.watch<HotspotRoomViewModel>();
     final playback = context.watch<PlaybackService>();
     final song = playback.currentSong;
+    final clientOffline = roomVM.isClient && roomVM.connection.isBroken;
 
     return Scaffold(
       appBar: AppBar(
@@ -27,32 +45,6 @@ class HotspotRoomPage extends StatelessWidget {
         children: [
           Container(
             width: double.infinity,
-            margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.surfaceContainerHighest,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Icon(
-                  Icons.warning_amber,
-                  color: Theme.of(context).colorScheme.error,
-                  size: 20,
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    'Changing tracks and pausing frequently might disrupt sync between clients. Tap on the seekbar to adjust sync.',
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Container(
-            width: double.infinity,
             margin: const EdgeInsets.all(16),
             padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
@@ -62,15 +54,21 @@ class HotspotRoomPage extends StatelessWidget {
             child: Column(
               children: [
                 Icon(
-                  roomVM.isHost ? Icons.wifi_tethering : Icons.cast_connected,
+                  roomVM.isHost
+                      ? Icons.wifi_tethering
+                      : clientOffline
+                          ? Icons.cast
+                          : Icons.cast_connected,
                   size: 48,
-                  color: Theme.of(context).colorScheme.primary,
+                  color: clientOffline
+                      ? Theme.of(context).colorScheme.error
+                      : Theme.of(context).colorScheme.primary,
                 ),
                 const SizedBox(height: 8),
                 Text(
                   roomVM.isHost
                       ? '${roomVM.hostServicePublic.connectedClientsCount} listener${roomVM.hostServicePublic.connectedClientsCount == 1 ? '' : 's'} connected'
-                      : 'Connected to ${roomVM.connectedHost?.name ?? ''}',
+                      : _clientStatus(roomVM),
                   style: const TextStyle(fontWeight: FontWeight.w600),
                 ),
                 const SizedBox(height: 12),
@@ -78,11 +76,20 @@ class HotspotRoomPage extends StatelessWidget {
                   Text(song.title, maxLines: 1, overflow: TextOverflow.ellipsis),
                   Text(song.subtitle, maxLines: 1, overflow: TextOverflow.ellipsis),
                 ] else if (roomVM.isHost)
-                  const Text('Go to Library → Local Songs to pick something to host.',
-                      textAlign: TextAlign.center),
+                  const Text(
+                    'All participants joined? Now go to Library → Local Songs and tap a track to share it. '
+                    '(Songs picked before everyone joins won\'t reach late joiners.)',
+                    textAlign: TextAlign.center,
+                  ),
               ],
             ),
           ),
+          if (roomVM.isClient)
+            ConnectionBanner(
+              connection: roomVM.connection,
+              onRetry: roomVM.retryConnection,
+              onLeave: roomVM.leaveRoom,
+            ),
           if (song != null) ...[
             StreamBuilder<Duration?>(
               stream: playback.durationStream,

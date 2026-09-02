@@ -5,6 +5,7 @@ import '../presentation/viewmodels/hotspot_room_viewmodel.dart';
 import '../services/audio/local_audio_service.dart';
 import '../services/auth/token_storage_service.dart';
 import '../services/audio/playback_service.dart';
+import '../services/download/song_download_service.dart';
 import '../data/datasources/remote/auth_api.dart';
 import '../data/datasources/remote/song_api.dart';
 import '../data/repositories/auth_repository.dart';
@@ -17,7 +18,9 @@ import '../data/repositories/room_repository.dart';
 import '../services/streaming/local_stream_client_service.dart';
 import '../services/streaming/local_stream_host_service.dart';
 import '../services/streaming/online_room_socket_service.dart';
+import '../services/streaming/radio_service.dart';
 import '../presentation/viewmodels/online_room_viewmodel.dart';
+import '../presentation/viewmodels/radio_viewmodel.dart';
 
 final locator = GetIt.instance;
 
@@ -35,11 +38,13 @@ void setupLocator() {
 
   locator.registerLazySingleton<SongApi>(() => SongApi(locator<Dio>()));
   locator.registerLazySingleton<SongRepository>(() => SongRepository(locator<SongApi>()));
+  locator.registerLazySingleton<SongDownloadService>(() => SongDownloadService());
   locator.registerFactory<LibraryViewModel>(
           () => LibraryViewModel(
         locator<SongRepository>(),
         locator<LocalAudioService>(),
         locator<PlaybackService>(),
+        locator<SongDownloadService>(),
       ),
   );
  // locator.registerFactory<LocalStreamHostService>(() => LocalStreamHostService());
@@ -67,6 +72,18 @@ void setupLocator() {
       hostService: locator<LocalStreamHostService>(),
       clientService: locator<LocalStreamClientService>(),
       playbackService: locator<PlaybackService>(),
+      tokenStorage: locator<TokenStorageService>(),
+    ),
+  );
+
+  locator.registerLazySingleton<RadioService>(() => RadioService());
+  // A singleton, not a factory: the radio keeps playing after you leave the
+  // Radio tab, so the VM must survive the page being disposed. Lazy means the
+  // station list isn't fetched until the tab is opened for the first time.
+  locator.registerLazySingleton<RadioViewModel>(
+        () => RadioViewModel(
+      locator<RadioService>(),
+      locator<PlaybackService>(),
     ),
   );
 }

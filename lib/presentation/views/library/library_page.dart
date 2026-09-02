@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../../core/navigation/app_scaffold_key.dart';
+import '../../../core/navigation/root_navigation.dart';
 import '../../viewmodels/library_viewmodel.dart';
 import '../../../di/locator.dart';
 import 'cloud_songs_tab.dart';
@@ -18,11 +18,11 @@ class LibraryPage extends StatelessWidget {
         child: Scaffold(
           appBar: AppBar(
             centerTitle: false,
-            titleSpacing: 4,
-          /*  leading: IconButton(
+            titleSpacing: 20,
+            leading: IconButton(
               icon: const Icon(Icons.menu),
-              onPressed: () => rootScaffoldKey.currentState?.openDrawer(),
-            ),*/
+              onPressed: RootNavigation.of(context).openDrawer,
+            ),
             title: const Text(
               'Your Library',
               style: TextStyle(fontWeight: FontWeight.w800, fontSize: 22),

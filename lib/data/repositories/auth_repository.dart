@@ -28,6 +28,7 @@ class AuthRepository {
       accessToken: data['access_token'],
       refreshToken: data['refresh_token'],
     );
+    await tokenStorage.saveUsername(username);
   }
 
   Future<UserModel> getCurrentUser() async {
