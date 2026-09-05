@@ -8,7 +8,8 @@ import 'core/theme/app_theme.dart';
 import 'di/locator.dart';
 import 'presentation/viewmodels/auth_viewmodel.dart';
 import 'presentation/views/root/root_shell.dart';
-import 'presentation/views/auth/login_page.dart';
+import 'presentation/views/auth/phone_login_page.dart';
+import 'presentation/views/auth/subscription_expired_page.dart';
 import 'services/audio/playback_service.dart';
 
 class SurAddaApp extends StatelessWidget {
@@ -18,7 +19,9 @@ class SurAddaApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
-        ChangeNotifierProvider<AuthViewModel>(create: (_) => locator<AuthViewModel>()),
+        // .value, not create: AuthViewModel is a locator singleton now, and
+        // create would let this provider dispose it.
+        ChangeNotifierProvider<AuthViewModel>.value(value: locator<AuthViewModel>()),
         ChangeNotifierProvider<PlaybackService>.value(value: locator<PlaybackService>()),
         ChangeNotifierProvider<OnlineRoomViewModel>.value(value: locator<OnlineRoomViewModel>()),
         ChangeNotifierProvider<HotspotRoomViewModel>.value(value: locator<HotspotRoomViewModel>()),
@@ -47,8 +50,13 @@ class AuthGate extends StatelessWidget {
         switch (authVM.status) {
           case AuthStatus.authenticated:
             return const RootShell();
+          // Signed in but not paying. Kept separate from unauthenticated so the
+          // user gets an explanation and a way back in, instead of silently
+          // landing on the phone screen as though the session had died.
+          case AuthStatus.subscriptionExpired:
+            return const SubscriptionExpiredPage();
           case AuthStatus.unauthenticated:
-            return const LoginPage();
+            return const PhoneLoginPage();
           case AuthStatus.unknown:
             return const Scaffold(
               backgroundColor: AppColors.background,

@@ -1,6 +1,8 @@
 import 'package:get_it/get_it.dart';
 import 'package:dio/dio.dart';
+import '../core/network/auth_event_bus.dart';
 import '../core/network/dio_client.dart';
+import '../data/datasources/remote/bdapps_api.dart';
 import '../presentation/viewmodels/hotspot_room_viewmodel.dart';
 import '../services/audio/local_audio_service.dart';
 import '../services/auth/token_storage_service.dart';
@@ -27,14 +29,32 @@ final locator = GetIt.instance;
 void setupLocator() {
   locator.registerLazySingleton<LocalAudioService>(() => LocalAudioService());
   locator.registerLazySingleton<TokenStorageService>(() => TokenStorageService());
-  locator.registerLazySingleton<Dio>(() => DioClient(locator<TokenStorageService>()).dio);
+  // Registered before Dio: the interceptor is built inside DioClient and needs
+  // somewhere to announce 401/403 without holding a view model.
+  locator.registerLazySingleton<AuthEventBus>(() => AuthEventBus());
+  locator.registerLazySingleton<Dio>(
+        () => DioClient(locator<TokenStorageService>(), locator<AuthEventBus>()).dio,
+  );
   locator.registerLazySingleton<PlaybackService>(() => PlaybackService());
 
   locator.registerLazySingleton<AuthApi>(() => AuthApi(locator<Dio>()));
+  // Deliberately not given locator<Dio>(): the PHP tier has its own base URL,
+  // much longer timeouts and no bearer token, so it must not share the
+  // interceptor-wrapped client.
+  locator.registerLazySingleton<BdappsApi>(() => BdappsApi());
   locator.registerLazySingleton<AuthRepository>(
-        () => AuthRepository(locator<AuthApi>(), locator<TokenStorageService>()),
+        () => AuthRepository(
+      locator<AuthApi>(),
+      locator<BdappsApi>(),
+      locator<TokenStorageService>(),
+    ),
   );
-  locator.registerFactory<AuthViewModel>(() => AuthViewModel(locator<AuthRepository>()));
+  // A singleton, not a factory: the OTP flow has to hold referenceNo across the
+  // phone screen and the OTP screen, which a fresh instance per resolution
+  // would throw away.
+  locator.registerLazySingleton<AuthViewModel>(
+        () => AuthViewModel(locator<AuthRepository>(), locator<AuthEventBus>()),
+  );
 
   locator.registerLazySingleton<SongApi>(() => SongApi(locator<Dio>()));
   locator.registerLazySingleton<SongRepository>(() => SongRepository(locator<SongApi>()));
