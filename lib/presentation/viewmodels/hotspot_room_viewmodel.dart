@@ -62,7 +62,7 @@ class HotspotRoomViewModel extends ChangeNotifier with WidgetsBindingObserver {
     final username = await tokenStorage.getUsername();
     final partyName = (username != null && username.isNotEmpty)
         ? "$username's Hotspot Party"
-        : 'Suradda Hotspot Party';
+        : 'ShurAdda Hotspot Party';
     await hostService.startHost(partyName: partyName);
     _mode = HotspotRoomMode.host;
     connection = RoomConnection.connected;

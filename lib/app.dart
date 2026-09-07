@@ -29,7 +29,7 @@ class SurAddaApp extends StatelessWidget {
 
       ],
       child: MaterialApp(
-        title: 'SurAdda',
+        title: 'ShurAdda',
         debugShowCheckedModeBanner: false,
         theme: AppTheme.darkTheme,
         darkTheme: AppTheme.darkTheme,

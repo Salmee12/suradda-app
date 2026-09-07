@@ -101,7 +101,7 @@ class _PhoneLoginPageState extends State<PhoneLoginPage> {
                   const Center(child: _TaglinePill()),
                   const SizedBox(height: 14),
                   const Text(
-                    'Welcome to SurAdda',
+                    'Welcome to ShurAdda',
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 21,

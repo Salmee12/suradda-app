@@ -108,8 +108,15 @@ class AuthViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Re-reads /auth/me. Used by the resubscribe screen to find out whether a
-  /// subscription taken out elsewhere has landed yet.
+  /// Re-reads /auth/me.
+  ///
+  /// Currently uncalled. This was the resubscribe screen's "I already renewed —
+  /// check again" button until that button was removed: /auth/me only reports
+  /// the verdict already stored against the row, and the server will not ask the
+  /// telco again until its 12-hour re-check falls due — a clock that landing on
+  /// the resubscribe screen has just reset. Pressing it after renewing therefore
+  /// changed nothing for up to half a day. Kept because a re-check-on-demand
+  /// route would make it work as labelled.
   Future<void> refreshUser() async {
     isLoading = true;
     notifyListeners();

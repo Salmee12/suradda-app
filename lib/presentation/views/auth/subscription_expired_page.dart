@@ -64,7 +64,9 @@ class SubscriptionExpiredPage extends StatelessWidget {
                       'Rooms, the shared library, radio and local playback all '
                       'sit behind the subscription, so the app stays locked '
                       'until it is active again. Nothing on your phone is '
-                      'deleted — renewing brings everything back.',
+                      'deleted — renewing brings everything back.\n\n'
+                      'Already topped up or renewed? Tap below and confirm your '
+                      'number. You will not be charged a second time.',
                       style: TextStyle(
                           fontSize: 12.5,
                           height: 1.5,
@@ -82,9 +84,25 @@ class SubscriptionExpiredPage extends StatelessWidget {
                   SizedBox(
                     height: 52,
                     child: ElevatedButton(
-                      // Subscribing again means running the telco flow for this
-                      // number, which lives on the phone screen. Signing out is
-                      // what gets there — AuthGate swaps the screen itself.
+                      // Labelled as a check, implemented as a sign-out. The
+                      // phone screen is the only place that asks the telco
+                      // live, and reaching it means clearing the session —
+                      // AuthGate swaps the screen itself. A number that is
+                      // paying again is signed straight back in from there with
+                      // no OTP and no second charge, so "check" is honest about
+                      // what the user experiences.
+                      //
+                      // This used to read "Subscribe again", which nobody who
+                      // had just topped up would willingly press. Sitting below
+                      // it was an "I already renewed — check again" button
+                      // wired to refreshUser(); that only re-read /auth/me,
+                      // whose verdict cannot change until the server's 12-hour
+                      // re-check falls due — and arriving on this screen resets
+                      // that clock. So the trustworthy-looking button did
+                      // nothing for up to half a day while the alarming one was
+                      // the working escape hatch. Removed rather than fixed:
+                      // making it real needs a server route that re-checks on
+                      // demand.
                       onPressed: vm.isLoading ? null : vm.logout,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.primary,
@@ -94,36 +112,9 @@ class SubscriptionExpiredPage extends StatelessWidget {
                         shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12)),
                       ),
-                      child: const Text('Subscribe again',
+                      child: const Text('Check my subscription',
                           style: TextStyle(
                               fontSize: 15, fontWeight: FontWeight.w700)),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  SizedBox(
-                    height: 48,
-                    child: OutlinedButton(
-                      // For a subscription renewed by SMS or USSD: the server
-                      // only re-checks every few hours, so this is the manual
-                      // nudge that avoids making the user wait it out.
-                      onPressed: vm.isLoading ? null : vm.refreshUser,
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: AppColors.textPrimary,
-                        side: const BorderSide(color: AppColors.card, width: 1.5),
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12)),
-                      ),
-                      child: vm.isLoading
-                          ? const SizedBox(
-                              width: 18,
-                              height: 18,
-                              child: CircularProgressIndicator(
-                                  strokeWidth: 2.5,
-                                  color: AppColors.textSecondary),
-                            )
-                          : const Text('I already renewed — check again',
-                              style: TextStyle(
-                                  fontSize: 14, fontWeight: FontWeight.w600)),
                     ),
                   ),
                 ],

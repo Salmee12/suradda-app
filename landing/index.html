@@ -1,0 +1,1687 @@
+<!DOCTYPE html>
+<html lang="en" data-lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>ShurAdda — a music player that plays on every phone at once</title>
+<meta name="description" content="ShurAdda is a music player for Bangladesh that also streams what you are playing to the phones around you, in sync — over the internet, or over a plain WiFi hotspot with no data at all. Several phones playing together become one much louder speaker. Shared cloud library, your own songs, live radio. Tk 2.78/day on Robi and Cirkle." />
+<meta name="theme-color" content="#121212" />
+<meta name="color-scheme" content="dark" />
+<meta property="og:title" content="ShurAdda — a music player that plays on every phone at once" />
+<meta property="og:description" content="Send the song to the phones around you and they all play the same second of it, so a handful of phones sound like one speaker. Over the internet or a plain hotspot. Tk 2.78/day." />
+<meta property="og:type" content="website" />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23121212'/%3E%3Cg fill='%231DB954'%3E%3Crect x='14' y='26' width='7' height='12' rx='3.5'/%3E%3Crect x='28' y='16' width='7' height='32' rx='3.5'/%3E%3Crect x='42' y='22' width='7' height='20' rx='3.5'/%3E%3C/g%3E%3C/svg%3E" />
+<style>
+/* ─────────────────────────────────────────────────────────────
+   Tokens. Mirrors lib/core/theme/app_colors.dart so the page and
+   the app read as one product.
+   ───────────────────────────────────────────────────────────── */
+:root{
+  --bg:#121212;
+  --surface:#181818;
+  --card:#282828;
+  --input:#2A2A2A;
+  --nav:#000000;
+  --green:#1DB954;
+  --green-bright:#1ED760;
+  --text:#FFFFFF;
+  --muted:#B3B3B3;
+  --error:#E22134;
+
+  --rule:rgba(255,255,255,.09);
+  --rule-strong:rgba(255,255,255,.18);
+  --tint:rgba(29,185,84,.10);
+
+  --maxw:1140px;
+  --pad:clamp(18px,5vw,56px);
+
+  --r-sm:8px;
+  --r:12px;
+  --r-lg:20px;
+  --r-pill:999px;
+
+  --f-1:clamp(.78rem,.75rem + .12vw,.85rem);
+  --f0:clamp(.93rem,.9rem + .18vw,1rem);
+  --f1:clamp(1.06rem,1rem + .4vw,1.25rem);
+  --f2:clamp(1.35rem,1.15rem + 1vw,1.9rem);
+  --f3:clamp(1.8rem,1.4rem + 2.2vw,3rem);
+  --f4:clamp(2.3rem,1.6rem + 4vw,4.3rem);
+
+  --ease:cubic-bezier(.2,.7,.2,1);
+}
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%;scroll-behavior:smooth}
+body{
+  margin:0;
+  background:var(--bg);
+  color:var(--text);
+  font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans Bengali","Hind Siliguri",Arial,sans-serif;
+  font-size:var(--f0);
+  line-height:1.6;
+  -webkit-font-smoothing:antialiased;
+}
+/* Bengali needs a touch more leading to stop matras colliding. */
+html[data-lang="bn"] body{line-height:1.85;letter-spacing:0}
+img,svg{display:block;max-width:100%}
+h1,h2,h3,h4{margin:0;line-height:1.15;font-weight:800;letter-spacing:-.02em}
+html[data-lang="bn"] h1,html[data-lang="bn"] h2,html[data-lang="bn"] h3{letter-spacing:0;line-height:1.3}
+p{margin:0}
+a{color:inherit;text-decoration:none}
+button{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--green-bright);outline-offset:3px;border-radius:4px}
+
+.wrap{max-width:var(--maxw);margin:0 auto;padding:0 var(--pad)}
+.muted{color:var(--muted)}
+.tabnum{font-variant-numeric:tabular-nums}
+.sr{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+
+/* ── Section scaffolding: hairline rules, editorial feel ───── */
+section{border-top:1px solid var(--rule)}
+.sec{padding:clamp(52px,8vw,104px) 0}
+.eyebrow{
+  display:inline-flex;align-items:center;gap:8px;
+  font-size:var(--f-1);font-weight:700;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--green);
+}
+html[data-lang="bn"] .eyebrow{letter-spacing:.04em;text-transform:none}
+.eyebrow::before{content:"";width:22px;height:1px;background:var(--green);opacity:.7}
+.sec-head{display:grid;gap:14px;max-width:66ch;margin-bottom:clamp(28px,4vw,52px)}
+.sec-head h2{font-size:var(--f3)}
+.sec-head p{color:var(--muted);font-size:var(--f1);font-weight:400}
+/* ── Buttons ───────────────────────────────────────────────── */
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:9px;
+  padding:14px 22px;border-radius:var(--r-pill);border:1px solid transparent;
+  font-weight:700;font-size:var(--f0);cursor:pointer;
+  transition:transform .18s var(--ease),background .18s var(--ease),
+             border-color .18s var(--ease),opacity .18s var(--ease);
+  min-height:48px;
+}
+.btn:hover{transform:translateY(-1px)}
+.btn:active{transform:translateY(0)}
+.btn[disabled],.btn[aria-disabled="true"]{opacity:.5;cursor:not-allowed;transform:none}
+.btn-primary{background:var(--green);color:#000}
+.btn-primary:hover{background:var(--green-bright)}
+.btn-ghost{background:transparent;color:var(--text);border-color:var(--rule-strong)}
+.btn-ghost:hover{border-color:#fff;background:rgba(255,255,255,.05)}
+.btn-quiet{background:transparent;color:var(--muted);padding:10px 6px;min-height:0;border-radius:var(--r-sm)}
+.btn-quiet:hover{color:var(--text);transform:none}
+.btn-danger{background:transparent;color:var(--error);border-color:rgba(226,33,52,.5)}
+.btn-danger:hover{background:rgba(226,33,52,.12);border-color:var(--error)}
+.btn-block{width:100%}
+/* Icon inside a button. Kept as a sibling of the translated span so
+   applyLang()'s innerHTML swap can never overwrite it. */
+.btn-ico{width:18px;height:18px;flex:none}
+.spin{
+  width:15px;height:15px;border-radius:50%;flex:none;
+  border:2px solid currentColor;border-top-color:transparent;
+  animation:spin .7s linear infinite;display:none;
+}
+.is-busy .spin{display:block}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ── Header ────────────────────────────────────────────────── */
+header{
+  position:sticky;top:0;z-index:60;
+  background:rgba(0,0,0,.82);backdrop-filter:blur(14px);
+  border-bottom:1px solid var(--rule);
+}
+.nav{display:flex;align-items:center;gap:18px;height:66px}
+.brand{display:flex;align-items:center;gap:10px;font-weight:800;letter-spacing:-.03em;font-size:1.16rem}
+.brand svg{width:26px;height:26px;flex:none}
+.nav-links{display:flex;gap:26px;margin-left:auto;font-size:var(--f-1);font-weight:600;color:var(--muted)}
+.nav-links a:hover{color:var(--text)}
+.nav-tools{display:flex;align-items:center;gap:10px;margin-left:auto}
+.nav-links + .nav-tools{margin-left:0}
+.lang{
+  display:inline-flex;background:var(--input);border-radius:var(--r-pill);
+  padding:3px;border:1px solid var(--rule);
+}
+.lang button{
+  background:none;border:0;cursor:pointer;padding:6px 13px;
+  border-radius:var(--r-pill);font-size:var(--f-1);font-weight:700;color:var(--muted);
+  transition:background .18s var(--ease),color .18s var(--ease);
+}
+.lang button[aria-pressed="true"]{background:var(--green);color:#000}
+.nav .btn{padding:10px 18px;min-height:40px;font-size:var(--f-1);white-space:nowrap}
+@media (max-width:860px){
+  .nav-links{display:none}
+  /* .nav-links is still in the DOM, so `.nav-links + .nav-tools{margin-left:0}`
+     keeps matching even though the links are hidden — which leaves the tools
+     clumped against the brand with dead space on the right. Push them back. */
+  .nav-links + .nav-tools{margin-left:auto}
+}
+/* Below the tablet breakpoint the header is only brand + language + CTA, and
+   on a 375px screen those three still do not fit at full size: the CTA label
+   wrapped onto two lines and the row overran its own padding. Tighten first,
+   then drop the wordmark on the narrowest phones — the logo mark stays a
+   home link, and the anchor's aria-label still reads "ShurAdda home". */
+@media (max-width:560px){
+  .nav{gap:10px}
+  .brand{font-size:1.04rem;gap:8px}
+  .brand svg{width:23px;height:23px}
+  .lang button{padding:6px 10px}
+  .nav .btn{padding:9px 13px}
+}
+@media (max-width:430px){
+  .nav .brand-name{display:none}
+}
+
+/* ── Hero ──────────────────────────────────────────────────── */
+.hero{position:relative;overflow:hidden;padding:clamp(56px,9vw,120px) 0 clamp(44px,6vw,80px)}
+.hero::before{
+  content:"";position:absolute;inset:-30% -10% auto -10%;height:70%;
+  background:radial-gradient(60% 60% at 30% 30%,rgba(29,185,84,.16),transparent 70%);
+  pointer-events:none;
+}
+.hero-grid{position:relative;display:grid;gap:clamp(34px,5vw,64px);grid-template-columns:minmax(0,1.12fr) minmax(0,.88fr);align-items:center}
+@media (max-width:940px){.hero-grid{grid-template-columns:1fr}}
+.hero h1{font-size:var(--f4);max-width:16ch}
+.hero h1 em{font-style:normal;color:var(--green)}
+.hero-sub{margin-top:20px;font-size:var(--f1);color:var(--muted);max-width:46ch}
+.hero-cta{display:flex;flex-wrap:wrap;gap:12px;margin-top:30px}
+.hero-meta{display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:26px;font-size:var(--f-1);color:var(--muted)}
+.hero-meta span{display:inline-flex;align-items:center;gap:7px}
+.dot{width:6px;height:6px;border-radius:50%;background:var(--green);flex:none}
+
+.price-card{
+  background:var(--surface);border:1px solid var(--rule);border-radius:var(--r-lg);
+  padding:clamp(22px,3vw,32px);
+}
+.price-card .tag{
+  display:inline-block;background:var(--tint);color:var(--green-bright);
+  border-radius:var(--r-pill);padding:5px 13px;font-size:var(--f-1);font-weight:700;
+}
+.price{display:flex;align-items:baseline;gap:8px;margin:16px 0 4px}
+.price b{font-size:clamp(2.4rem,1.8rem + 3vw,3.6rem);font-weight:800;letter-spacing:-.04em;line-height:1}
+.price i{font-style:normal;color:var(--muted);font-size:var(--f0)}
+.price-list{list-style:none;margin:18px 0 0;padding:0;display:grid;gap:11px;font-size:var(--f-1)}
+.price-list li{display:flex;gap:10px;align-items:flex-start;color:var(--muted)}
+.price-list svg{width:16px;height:16px;flex:none;margin-top:4px;color:var(--green)}
+.price-note{margin-top:18px;padding-top:16px;border-top:1px solid var(--rule);font-size:var(--f-1);color:var(--muted)}
+
+/* ── Ticker ────────────────────────────────────────────────── */
+.ticker{border-top:1px solid var(--rule);border-bottom:1px solid var(--rule);background:var(--surface);overflow:hidden}
+.ticker-track{display:flex;width:max-content;animation:slide 34s linear infinite}
+.ticker-track > div{display:flex;flex:none}
+.ticker span{
+  display:inline-flex;align-items:center;gap:14px;padding:15px 26px;
+  font-size:var(--f-1);font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);
+  white-space:nowrap;
+}
+html[data-lang="bn"] .ticker span{letter-spacing:.02em;text-transform:none}
+.ticker span::after{content:"";width:5px;height:5px;border-radius:50%;background:var(--green);opacity:.8}
+@keyframes slide{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+.ticker:hover .ticker-track{animation-play-state:paused}
+
+/* ── Numbered feature rows (CSS counters) ──────────────────── */
+.rows{counter-reset:row;border-top:1px solid var(--rule)}
+.row{
+  counter-increment:row;
+  display:grid;
+  grid-template-columns:auto minmax(0,.8fr) minmax(0,1fr) clamp(150px,17vw,212px);
+  gap:clamp(16px,3vw,40px);align-items:start;
+  padding:clamp(24px,3.4vw,40px) 0;border-bottom:1px solid var(--rule);
+}
+.row::before{
+  content:counter(row,decimal-leading-zero);
+  font-size:var(--f-1);font-weight:700;color:var(--green);
+  font-variant-numeric:tabular-nums;padding-top:.45em;min-width:2.4ch;
+}
+.row h3{font-size:var(--f2)}
+.row .row-body{color:var(--muted)}
+.row .row-body strong{color:var(--text);font-weight:700}
+.chips{display:flex;flex-wrap:wrap;gap:7px;margin-top:14px}
+.chip{
+  font-size:.74rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;
+  padding:5px 10px;border-radius:var(--r-pill);border:1px solid var(--rule-strong);color:var(--muted);
+}
+html[data-lang="bn"] .chip{letter-spacing:0;text-transform:none}
+
+/* ── Feature screenshots ─────────────────────────────────────
+   The PNGs in landing/screenshots/ already carry their own device
+   mockup on a black surround, so nothing here draws a frame — the
+   image is the whole visual. Each keeps its native proportions (no
+   aspect-ratio, no object-fit), so a shot of any shape drops in
+   uncropped and fills its slot edge to edge.
+
+   An unfilled slot is the one thing that does get a border: .shot
+   .missing draws a dashed box naming the file that belongs there,
+   rather than leaving a broken-image icon on the page. */
+.shot{width:100%;margin:0;justify-self:end}
+.shot img{display:block;width:100%;height:auto;border-radius:12px}
+/* Two shots side by side for the party rows. .row.pair widens the last column
+   so each frame stays legible instead of shrinking to a thumbnail. */
+.shots{display:grid;grid-template-columns:1fr 1fr;gap:12px;justify-self:end;width:100%}
+.row.pair{grid-template-columns:auto minmax(0,.7fr) minmax(0,.9fr) clamp(150px,30vw,400px)}
+.shot-cap{
+  text-align:center;padding:8px 2px 1px;color:var(--muted);
+  font-size:.62rem;font-weight:700;letter-spacing:.09em;text-transform:uppercase;
+}
+html[data-lang="bn"] .shot-cap{letter-spacing:0;text-transform:none;font-size:.72rem}
+.shot.missing{padding:6px;border:1px dashed var(--rule-strong);border-radius:20px;background:var(--surface)}
+.shot.missing img{display:none}
+/* ::before, not ::after, so the slot lands above the figcaption. */
+.shot.missing::before{
+  content:attr(data-hint);
+  display:flex;align-items:center;justify-content:center;
+  aspect-ratio:1840/3600;padding:14px;border-radius:15px;
+  background:var(--input);text-align:center;overflow-wrap:anywhere;
+  font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  color:var(--muted);font-size:.66rem;font-weight:600;line-height:1.7;
+}
+
+@media (max-width:820px){
+  .row,.row.pair{grid-template-columns:auto minmax(0,1fr)}
+  .row > .row-body{grid-column:2}
+  /* Direct children only. A descendant selector here would also hit the two
+     figure.shot nested inside .shots and force both of them into column 2 of
+     that inner grid, stacking the host/listener pair vertically instead of
+     leaving them side by side. */
+  .row > .shot,.row > .shots{grid-column:2;justify-self:start;max-width:212px}
+  .row.pair > .shots{max-width:436px}
+}
+@media (max-width:480px){
+  /* Side by side at this width leaves each shot about 120px across, at which
+     point the app UI inside them is no longer readable. Stack the pair and
+     give each one the same 212px the single-shot rows get, so all six rows
+     present their screenshots at one scale. The Host/Listener captions keep
+     the pairing legible without the side-by-side arrangement. */
+  .row.pair > .shots{grid-template-columns:1fr;max-width:212px}
+}
+/* ── Steps ─────────────────────────────────────────────────── */
+.steps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1px;background:var(--rule);border:1px solid var(--rule);border-radius:var(--r-lg);overflow:hidden}
+@media (max-width:780px){.steps{grid-template-columns:1fr}}
+.step{background:var(--surface);padding:clamp(22px,3vw,32px)}
+.step .n{font-size:var(--f-1);font-weight:800;color:var(--green);letter-spacing:.1em}
+.step h3{font-size:var(--f1);margin:12px 0 8px}
+.step p{color:var(--muted);font-size:var(--f-1)}
+
+/* ── The subscribe card ─────────────────────────────────────
+   A port of lib/presentation/views/auth/phone_login_page.dart and
+   otp_verify_page.dart: the same 420px column, the same pill field and
+   drawn flag, the same operator toggles, digit cells and gradient
+   button. Sizes are kept in px because they are the Flutter values.
+   ───────────────────────────────────────────────────────────── */
+.appcard{max-width:420px;margin:0 auto}
+.appcard h3{font-size:21px;font-weight:800;text-align:center;margin-top:14px}
+.ac-sub{font-size:12.5px;color:var(--muted);text-align:center;margin-top:6px;line-height:1.5}
+.ac-label{display:block;font-size:10.5px;font-weight:800;letter-spacing:.8px;color:var(--muted);margin:22px 0 8px}
+html[data-lang="bn"] .ac-label{letter-spacing:0}
+.ac-err{text-align:center;color:var(--error);font-size:12.5px;line-height:1.45;margin-top:14px}
+.fine{text-align:center;color:var(--muted);margin-top:10px;font-size:11.5px}
+.finer{text-align:center;color:var(--muted);margin-top:6px;font-size:10.5px;line-height:1.4}
+.working{text-align:center;font-size:12px;line-height:1.5;color:var(--muted);margin-top:16px}
+
+.pill-badge{
+  display:inline-flex;align-items:center;gap:6px;background:rgba(29,185,84,.12);
+  border-radius:var(--r-pill);padding:6px 12px;font-size:11px;font-weight:800;color:var(--green);
+}
+.pill-badge svg{width:12px;height:12px;flex:none}
+
+/* Flag, +88, hairline, then the eleven local digits. */
+.phone-pill{
+  display:flex;align-items:center;gap:10px;height:54px;padding:0 16px;
+  background:var(--input);border-radius:var(--r-pill);
+  border:1.5px solid rgba(255,255,255,.10);transition:border-color .14s var(--ease);
+}
+.phone-pill:focus-within{border-color:var(--green);border-width:2px;padding:0 15.5px}
+.bdflag{width:24px;height:16px;border-radius:2px;background:#006A4E;position:relative;flex:none}
+/* The disc sits left of centre on the flag itself, as in _BdFlag. */
+.bdflag::after{
+  content:"";position:absolute;width:9.6px;height:9.6px;border-radius:50%;
+  background:#F42A41;top:50%;left:46.1%;transform:translate(-50%,-50%);
+}
+.cc{font-size:14px;font-weight:700;color:var(--muted)}
+.pill-div{width:1px;height:20px;background:rgba(255,255,255,.12);flex:none}
+.phone-pill input{
+  flex:1;min-width:0;background:none;border:0;outline:none;color:var(--text);
+  font-size:15px;font-weight:600;letter-spacing:.5px;
+}
+.phone-pill input::placeholder{color:var(--muted);font-weight:400;letter-spacing:0}
+/* 15px matches the app, but iOS Safari zooms the whole page in whenever a
+   focused field computes under 16px — and it never zooms back out, so the
+   layout just stays enlarged and off-centre for the rest of the visit. The
+   usual "fix" is maximum-scale=1 on the viewport meta, which kills pinch
+   zoom for everyone; bumping the field instead costs one pixel on touch
+   devices only. pointer:coarse rather than a width query because an iPad in
+   landscape is 1024px wide and zooms just the same. */
+@media (pointer:coarse){.phone-pill input{font-size:16px}}
+/* _ChargeNotice */
+.charge{
+  display:flex;gap:10px;align-items:flex-start;margin-top:14px;padding:11px 12px;
+  background:var(--card);border:1px solid rgba(29,185,84,.28);border-radius:16px;
+}
+.charge .i{
+  width:20px;height:20px;border-radius:50%;background:var(--green);color:#000;
+  font-weight:900;font-size:12px;display:flex;align-items:center;justify-content:center;flex:none;
+}
+.charge p{font-size:12px;line-height:1.45;color:var(--muted)}
+
+/* _OperatorButton — tapping one writes its prefix into the field, and
+   selection is read back out of the digits, never stored separately. */
+.ops{display:flex;gap:12px;margin-top:14px}
+.op{
+  flex:1;display:flex;align-items:center;justify-content:center;gap:8px;height:46px;
+  border-radius:var(--r-pill);background:transparent;border:2px solid rgba(255,255,255,.12);
+  cursor:pointer;transition:background .14s var(--ease),border-color .14s var(--ease);
+}
+.op .tick{
+  width:16px;height:16px;border-radius:50%;background:rgba(255,255,255,.14);
+  display:flex;align-items:center;justify-content:center;flex:none;
+}
+.op .tick svg{width:11px;height:11px;color:var(--muted)}
+.op .nm{font-size:13.5px;font-weight:700;color:var(--muted)}
+.op .px{font-size:11px;font-weight:600;color:rgba(179,179,179,.7)}
+.op[aria-pressed="true"]{background:rgba(29,185,84,.10);border-color:var(--green)}
+.op[aria-pressed="true"] .tick{background:var(--green)}
+.op[aria-pressed="true"] .tick svg{color:#000}
+.op[aria-pressed="true"] .nm{color:var(--text)}
+.op[aria-pressed="true"] .px{color:var(--green)}
+
+/* _ContinueButton */
+.cta-grad{
+  width:100%;height:54px;border:0;border-radius:var(--r-pill);color:#000;
+  background:linear-gradient(90deg,var(--green),var(--green-bright));
+  font-family:inherit;font-size:16px;font-weight:800;cursor:pointer;margin-top:20px;
+  box-shadow:0 6px 18px rgba(29,185,84,.30);
+  display:flex;align-items:center;justify-content:center;gap:10px;
+}
+.cta-grad[disabled],.cta-solid[disabled]{cursor:not-allowed}
+.cta-grad[disabled]{opacity:.55;box-shadow:none}
+/* ── OTP step (otp_verify_page.dart) ───────────────────────── */
+.ac-badge{
+  width:64px;height:64px;margin:0 auto;border-radius:18px;color:var(--green);
+  background:rgba(29,185,84,.12);border:1px solid rgba(29,185,84,.3);
+  display:flex;align-items:center;justify-content:center;
+}
+.ac-badge svg{width:30px;height:30px}
+.appcard h4{font-size:22px;font-weight:800;text-align:center;margin-top:22px}
+.ac-sub2{font-size:13.5px;line-height:1.5;color:var(--muted);text-align:center;margin-top:8px}
+.back-btn{
+  background:none;border:0;color:var(--text);cursor:pointer;padding:8px;
+  display:inline-flex;border-radius:50%;margin-bottom:2px;
+}
+.back-btn:hover{background:rgba(255,255,255,.07)}
+.back-btn svg{width:20px;height:20px}
+
+/* Six cells drawn over one real input, so a pasted or SMS-autofilled
+   code lands in a single value instead of being split across boxes. */
+.code-card{
+  position:relative;margin-top:26px;padding:18px 14px;background:var(--surface);
+  border:1.5px solid rgba(255,255,255,.06);border-radius:16px;box-shadow:0 8px 18px rgba(0,0,0,.35);
+}
+.cells{display:flex;gap:8px}
+.cell{
+  flex:1;height:56px;border-radius:11px;background:var(--input);
+  border:1.5px solid rgba(255,255,255,.07);font-size:22px;font-weight:700;
+  display:flex;align-items:center;justify-content:center;
+  transition:border-color .14s var(--ease),box-shadow .14s var(--ease);
+}
+.cell.filled{border-color:rgba(29,185,84,.45)}
+.code-card:focus-within .cell.active{border:2px solid var(--green);box-shadow:0 0 10px rgba(29,185,84,.25)}
+.code-card input{
+  position:absolute;left:14px;right:14px;top:18px;height:56px;
+  opacity:0;border:0;background:none;font:inherit;cursor:pointer;
+  /* Invisible field, so this is not a type-size choice — it is the same iOS
+     focus-zoom threshold as .phone-pill input above. Inherited it landed at
+     ~15px, which meant tapping the code boxes zoomed the page. */
+  font-size:16px;
+}
+.name-field{
+  width:100%;background:var(--input);border:0;border-radius:var(--r);padding:16px;
+  color:var(--text);font-family:inherit;font-size:16px;font-weight:600;outline:none;
+  transition:box-shadow .14s var(--ease);
+}
+.name-field::placeholder{color:var(--muted);font-weight:400}
+.name-field:focus{box-shadow:inset 0 0 0 1.5px var(--green)}
+.cta-solid{
+  width:100%;height:52px;border:0;border-radius:13px;background:var(--green);color:#000;
+  font-family:inherit;font-size:15px;font-weight:700;cursor:pointer;margin-top:24px;
+  box-shadow:0 3px 10px rgba(0,0,0,.3);
+  display:flex;align-items:center;justify-content:center;gap:10px;
+}
+.cta-solid[disabled]{background:rgba(29,185,84,.4);box-shadow:none}
+
+/* Beats display:flex/grid rules when JS toggles a block off. */
+[hidden]{display:none !important}
+.pstep{display:none}
+.pstep.on{display:block;animation:fade .28s var(--ease)}
+@keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.done-icon{width:46px;height:46px;color:var(--green);margin:0 auto;display:block}
+
+/* ── FAQ ───────────────────────────────────────────────────── */
+.faq{border-top:1px solid var(--rule);max-width:80ch}
+.faq details{border-bottom:1px solid var(--rule)}
+.faq summary{
+  cursor:pointer;list-style:none;padding:20px 40px 20px 0;position:relative;
+  font-weight:700;font-size:var(--f1);
+}
+.faq summary::-webkit-details-marker{display:none}
+.faq summary::after{
+  content:"";position:absolute;right:6px;top:50%;width:9px;height:9px;
+  border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);
+  transform:translateY(-70%) rotate(45deg);transition:transform .22s var(--ease);
+}
+.faq details[open] summary::after{transform:translateY(-30%) rotate(225deg)}
+.faq details[open] summary{color:var(--green)}
+.faq .ans{padding:0 40px 22px 0;color:var(--muted);font-size:var(--f0)}
+
+/* ── Footer ────────────────────────────────────────────────── */
+footer{background:var(--nav);border-top:1px solid var(--rule);padding:clamp(38px,5vw,64px) 0 30px}
+.foot-grid{display:grid;grid-template-columns:minmax(0,1.4fr) repeat(2,minmax(0,1fr));gap:32px}
+@media (max-width:760px){.foot-grid{grid-template-columns:1fr 1fr}.foot-grid > div:first-child{grid-column:1/-1}}
+.foot-grid h4{font-size:var(--f-1);letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:14px}
+html[data-lang="bn"] .foot-grid h4{letter-spacing:.02em;text-transform:none}
+.foot-grid ul{list-style:none;margin:0;padding:0;display:grid;gap:10px;font-size:var(--f-1);color:var(--muted)}
+.foot-grid a:hover{color:var(--text)}
+.foot-bottom{
+  margin-top:36px;padding-top:22px;border-top:1px solid var(--rule);
+  display:flex;flex-wrap:wrap;gap:10px 22px;justify-content:space-between;
+  font-size:.78rem;color:var(--muted);
+}
+
+/* ── Reveal on scroll ──────────────────────────────────────── */
+.reveal{opacity:0;transform:translateY(18px);transition:opacity .7s var(--ease),transform .7s var(--ease)}
+.reveal.in{opacity:1;transform:none}
+@media (prefers-reduced-motion:reduce){
+  html{scroll-behavior:auto}
+  .reveal{opacity:1;transform:none;transition:none}
+  .ticker-track{animation:none}
+  .btn:hover{transform:none}
+  .pstep.on{animation:none}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap nav">
+    <a class="brand" href="#top" aria-label="ShurAdda home">
+      <svg viewBox="0 0 64 64" aria-hidden="true">
+        <rect width="64" height="64" rx="14" fill="#1DB954" opacity=".14"></rect>
+        <g fill="#1DB954">
+          <rect x="14" y="26" width="7" height="12" rx="3.5"></rect>
+          <rect x="28" y="16" width="7" height="32" rx="3.5"></rect>
+          <rect x="42" y="22" width="7" height="20" rx="3.5"></rect>
+        </g>
+      </svg>
+      <span class="brand-name">ShurAdda</span>
+    </a>
+    <nav class="nav-links" aria-label="Sections">
+      <a href="#features" data-i18n="nav.features">Features</a>
+      <a href="#how" data-i18n="nav.how">How it works</a>
+      <a href="#subscribe" data-i18n="nav.subscribe">Subscribe</a>
+      <a href="#faq" data-i18n="nav.faq">FAQ</a>
+    </nav>
+    <div class="nav-tools">
+      <div class="lang" role="group" aria-label="Language">
+        <button type="button" data-set-lang="en" aria-pressed="true">EN</button>
+        <button type="button" data-set-lang="bn" aria-pressed="false">বাংলা</button>
+      </div>
+      <!-- ↓↓ APK DOWNLOAD LINK ↓↓
+           Both buttons marked data-apk point at the app build. Change the
+           href on this one and on hero.cta2 below together — nothing in the
+           JS rewrites them, so each link is its own source of truth.
+
+           `download` only forces a save dialog when the file comes from the
+           same origin as this page. If the page ends up served from
+           bdappsdigitalapps.com too, that is the case and the attribute
+           earns its keep; from anywhere else the browser quietly ignores it
+           and the link still downloads normally. Harmless either way. -->
+      <a class="btn btn-primary" href="https://www.bdappsdigitalapps.com/shuradda/shuradda.apk" download data-apk data-i18n="nav.cta">Get ShurAdda</a>
+    </div>
+  </div>
+</header>
+
+<main id="top">
+
+  <!-- ── Hero ─────────────────────────────────────────────── -->
+  <section class="hero" style="border-top:0">
+    <div class="wrap hero-grid">
+      <div>
+        <span class="eyebrow" data-i18n="hero.eyebrow">For Robi &amp; Cirkle numbers</span>
+        <h1 data-i18n="hero.h1">A music player that plays on <em>every phone at once</em>.</h1>
+        <p class="hero-sub" data-i18n="hero.sub">
+          Everything you expect from a player — your own songs, a shared library,
+          live radio. Then hand the song to the phones around you and they all
+          play the same second of it: four phones together sound like one much
+          louder speaker, and nobody has to split a pair of earphones.
+        </p>
+        <div class="hero-cta">
+          <a class="btn btn-primary" href="#subscribe" data-i18n="hero.cta1">Subscribe — Tk 2.78/day</a>
+          <a class="btn btn-ghost" href="https://www.bdappsdigitalapps.com/shuradda/shuradda.apk" download data-apk>
+            <svg class="btn-ico" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <path d="M6 18c0 .55.45 1 1 1h1v3.5a1.5 1.5 0 0 0 3 0V19h2v3.5a1.5 1.5 0 0 0 3 0V19h1c.55 0 1-.45 1-1V8H6v10zM3.5 8A1.5 1.5 0 0 0 2 9.5v7a1.5 1.5 0 0 0 3 0v-7A1.5 1.5 0 0 0 3.5 8zm17 0A1.5 1.5 0 0 0 19 9.5v7a1.5 1.5 0 0 0 3 0v-7A1.5 1.5 0 0 0 20.5 8zm-4.97-5.84 1.3-1.3a.5.5 0 0 0-.71-.71l-1.48 1.48A5.87 5.87 0 0 0 12 1c-.96 0-1.86.23-2.66.63L7.85.15a.5.5 0 0 0-.71.71l1.31 1.31A5.9 5.9 0 0 0 6 7h12a5.9 5.9 0 0 0-2.47-4.84zM10 5H9V4h1v1zm5 0h-1V4h1v1z"></path>
+            </svg>
+            <span data-i18n="hero.cta2">Download the ShurAdda app</span>
+          </a>
+        </div>
+        <div class="hero-meta">
+          <span><i class="dot"></i><span data-i18n="hero.m1">Robi 018 &amp; Cirkle 016</span></span>
+          <span><i class="dot"></i><span data-i18n="hero.m2">Charged daily, cancel any time</span></span>
+          <span><i class="dot"></i><span data-i18n="hero.m3">No card, no password</span></span>
+        </div>
+      </div>
+      <aside class="price-card reveal">
+        <span class="tag" data-i18n="price.tag">Daily subscription</span>
+        <div class="price">
+          <b class="tabnum">৳2.78</b>
+          <i data-i18n="price.per">/ day</i>
+        </div>
+        <p class="muted" style="font-size:var(--f-1)" data-i18n="price.incl">
+          VAT and SD included. Billed to your mobile balance.
+        </p>
+        <ul class="price-list">
+          <li>
+            <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="M8 14.2 4.3 10.5l1.4-1.4L8 11.4l6.3-6.3 1.4 1.4z"/></svg>
+            <span data-i18n="price.f1">Nearby phones playing as one speaker</span>
+          </li>
+          <li>
+            <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="M8 14.2 4.3 10.5l1.4-1.4L8 11.4l6.3-6.3 1.4 1.4z"/></svg>
+            <span data-i18n="price.f2">Over a hotspot, or over the internet</span>
+          </li>
+          <li>
+            <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="M8 14.2 4.3 10.5l1.4-1.4L8 11.4l6.3-6.3 1.4 1.4z"/></svg>
+            <span data-i18n="price.f3">Shared cloud library + your own songs</span>
+          </li>
+          <li>
+            <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="M8 14.2 4.3 10.5l1.4-1.4L8 11.4l6.3-6.3 1.4 1.4z"/></svg>
+            <span data-i18n="price.f4">Live radio, local and international</span>
+          </li>
+        </ul>
+        <p class="price-note" data-i18n="price.note">
+          One number, one subscription. Signing in later never charges you twice —
+          if your number is already active we skip the code and let you straight in.
+        </p>
+      </aside>
+    </div>
+  </section>
+
+  <!-- ── Ticker ───────────────────────────────────────────── -->
+  <div class="ticker" aria-hidden="true">
+    <div class="ticker-track" id="ticker"></div>
+  </div>
+
+  <!-- ── Features ─────────────────────────────────────────── -->
+  <!-- No section heading here on purpose: the numbered rows are the
+       feature list, and a "what you get" preamble above them just said
+       the same thing twice. .sec supplies the top padding that the
+       removed .sec-head used to contribute. -->
+  <section id="features" class="sec">
+    <div class="wrap">
+      <div class="rows">
+        <article class="row reveal pair">
+          <h3 data-i18n="f1.h">Nearby phones become one speaker</h3>
+          <div class="row-body">
+            <p data-i18n="f1.b">
+              One phone turns on its hotspot, the others join it, and the song
+              streams off that phone to all of them at the same second. Four
+              phones playing the same track at once are four times the sound —
+              <strong>a speaker you did not have to buy or carry</strong>. No
+              internet, no data charge, and no pair of earphones to pass around.
+            </p>
+            <div class="chips">
+              <span class="chip" data-i18n="f1.c1">Louder together</span>
+              <span class="chip" data-i18n="f1.c2">No internet</span>
+              <span class="chip" data-i18n="f1.c3">No earphones to split</span>
+            </div>
+          </div>
+          <!-- ↓↓ FEATURE SCREENSHOTS ↓↓
+               One figure.shot per slot, each holding a single screenshot from
+               landing/screenshots/. No frame is drawn around them — the PNGs
+               already carry their own device mockup — and nothing is cropped,
+               so a replacement of any shape drops straight in. If you rename
+               a file, update both its src and its data-hint (the hint is what
+               an unfilled slot prints). Keep the alt text: it is what a screen
+               reader and a failed load fall back to.
+
+               Rows 01 and 02 both show a party, so they take a pair — the same
+               session from the host's phone and from a listener's, wrapped in
+               .shots side by side. Those two articles carry class "pair", which
+               widens the column to fit both. -->
+          <div class="shots">
+            <figure class="shot" data-hint="screenshots/01-hotspot-party-host.png">
+              <img src="screenshots/01-hotspot-party-host.png"
+                   alt="The host's phone running a hotspot party, with one listener connected.">
+              <figcaption class="shot-cap" data-i18n="cap.host">Host</figcaption>
+            </figure>
+            <figure class="shot" data-hint="screenshots/01-hotspot-party-listener.png">
+              <img src="screenshots/01-hotspot-party-listener.png"
+                   alt="A nearby phone joined to the host's hotspot party, with no internet of its own.">
+              <figcaption class="shot-cap" data-i18n="cap.listener">Listener</figcaption>
+            </figure>
+          </div>
+        </article>
+
+        <article class="row reveal pair">
+          <h3 data-i18n="f2.h">Or from anywhere at all</h3>
+          <div class="row-body">
+            <p data-i18n="f2.b">
+              Not in the same room? Start a party over the internet instead,
+              share the code, and everyone plays from the shared library on the
+              same second — play, pause and skip travel to every phone that
+              joined. <strong>The host drives, the rest just listen</strong>, from
+              the next building or the next district.
+              <strong>Make sure to login with different numbers</strong> on each phone, or the app will think they are all the same device and only one will play.
+            </p>
+            <div class="chips">
+              <span class="chip" data-i18n="f2.c1">Party code</span>
+              <span class="chip" data-i18n="f2.c2">Live sync</span>
+              <span class="chip" data-i18n="f2.c3">Any distance</span>
+            </div>
+          </div>
+          <div class="shots">
+            <figure class="shot" data-hint="screenshots/02-online-party-host.png">
+              <img src="screenshots/02-online-party-host.png"
+                   alt="The host's phone in party UVTXPK: the track everyone is on, and both people in the party.">
+              <figcaption class="shot-cap" data-i18n="cap.host">Host</figcaption>
+            </figure>
+            <figure class="shot" data-hint="screenshots/02-online-party-listener.png">
+              <img src="screenshots/02-online-party-listener.png"
+                   alt="A listener's phone in the same party, following whatever the host does.">
+              <figcaption class="shot-cap" data-i18n="cap.listener">Listener</figcaption>
+            </figure>
+          </div>
+        </article>
+
+        <article class="row reveal">
+          <h3 data-i18n="f3.h">A shared cloud library</h3>
+          <div class="row-body">
+            <p data-i18n="f3.b">
+              Songs uploaded to ShurAdda are there for everyone on the app, so
+              there is always something to play without hunting for files first —
+              and a party never stalls because one person does not have the
+              track. <strong>Browse it, queue it, play it</strong>, no transfers
+              and no sending files over WhatsApp.
+            </p>
+            <div class="chips">
+              <span class="chip" data-i18n="f3.c1">Streamed</span>
+              <span class="chip" data-i18n="f3.c2">Shared by everyone</span>
+            </div>
+          </div>
+          <figure class="shot" data-hint="screenshots/03-cloud-library.png">
+            <img src="screenshots/03-cloud-library.png"
+                 alt="The Cloud tab of Your Library: shared songs, each with a download button.">
+          </figure>
+        </article>
+        <article class="row reveal">
+          <h3 data-i18n="f4.h">The music already on your phone</h3>
+          <div class="row-body">
+            <p data-i18n="f4.b">
+              ShurAdda reads the audio sitting on your device and plays it with the
+              same queue and the same controls as everything else —
+              <strong>an ordinary music player, with nothing to upload</strong>.
+              A hotspot party streams straight from that local collection.
+            </p>
+            <div class="chips">
+              <span class="chip" data-i18n="f4.c1">On-device</span>
+              <span class="chip" data-i18n="f4.c2">Works offline</span>
+            </div>
+          </div>
+          <figure class="shot" data-hint="screenshots/04-your-own-songs.png">
+            <img src="screenshots/04-your-own-songs.png"
+                 alt="The Local tab of Your Library: audio already on the phone, in the same player.">
+          </figure>
+        </article>
+
+        <article class="row reveal">
+          <h3 data-i18n="f5.h">Live radio</h3>
+          <div class="row-body">
+            <p data-i18n="f5.b">
+              Bangladeshi stations in one tab, the rest of the world in the other,
+              ordered by what people actually listen to. <strong>Tap a station and
+              it plays</strong> — dead streams are filtered out before you ever see
+              them.
+            </p>
+            <div class="chips">
+              <span class="chip" data-i18n="f5.c1">Local BD</span>
+              <span class="chip" data-i18n="f5.c2">International</span>
+            </div>
+          </div>
+          <figure class="shot" data-hint="screenshots/05-live-radio.png">
+            <img src="screenshots/05-live-radio.png"
+                 alt="Live Radio on the Bangladesh tab, with a station playing and marked live.">
+          </figure>
+        </article>
+
+        <article class="row reveal">
+          <h3 data-i18n="f6.h">Keeps playing when you leave</h3>
+          <div class="row-body">
+            <p data-i18n="f6.b">
+              Lock the screen or switch apps and the music carries on, with controls
+              on the notification and lock screen. <strong>A party you are hosting
+              stays connected</strong> instead of dropping everyone the moment your
+              phone sleeps.
+            </p>
+            <div class="chips">
+              <span class="chip" data-i18n="f6.c1">Background audio</span>
+              <span class="chip" data-i18n="f6.c2">Lock-screen controls</span>
+            </div>
+          </div>
+          <figure class="shot" data-hint="screenshots/06-background-playback.png">
+            <img src="screenshots/06-background-playback.png"
+                 alt="Playback controls in the notification shade while the app sits in the background.">
+          </figure>
+        </article>
+      </div>
+    </div>
+  </section>
+  <!-- ── How it works ─────────────────────────────────────── -->
+  <section id="how" class="sec">
+    <div class="wrap">
+      <div class="sec-head reveal">
+        <span class="eyebrow" data-i18n="how.eyebrow">Getting started</span>
+        <h2 data-i18n="how.h2">Your number is your account.</h2>
+        <p data-i18n="how.sub">
+          There is no password to invent and no card to enter. The subscription and
+          the account are the same thing, and both live on your SIM.
+        </p>
+      </div>
+      <div class="steps reveal">
+        <div class="step">
+          <div class="n">01</div>
+          <h3 data-i18n="how.s1h">Enter your number</h3>
+          <p data-i18n="how.s1b">
+            Type your Robi or Cirkle number below. We check whether it is already
+            subscribed before anything is sent, so nobody pays twice.
+          </p>
+        </div>
+        <div class="step">
+          <div class="n">02</div>
+          <h3 data-i18n="how.s2h">Confirm the code</h3>
+          <p data-i18n="how.s2b">
+            An SMS arrives with a one-time code. Enter it with the name you want
+            other listeners to see, and the subscription starts.
+          </p>
+        </div>
+        <div class="step">
+          <div class="n">03</div>
+          <h3 data-i18n="how.s3h">Open the app</h3>
+          <p data-i18n="how.s3b">
+            Install ShurAdda, enter the same number, and it signs you in without
+            another code. Everything is ready.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Subscribe / manage ───────────────────────────────── -->
+  <section id="subscribe" class="sec">
+    <div class="wrap">
+      <div class="sec-head reveal">
+        <span class="eyebrow" data-i18n="sub.eyebrow">Subscribe</span>
+        <h2 data-i18n="sub.h2">Start right here.</h2>
+        <p data-i18n="sub.sub">
+          These are the same two screens the app shows you, so there is nothing new
+          to learn. Subscribe here and the app will let you straight in.
+        </p>
+      </div>
+      <!-- A port of the app's own two auth screens, in the same order. -->
+      <div class="appcard reveal">
+
+        <!-- step 1 — the number (phone_login_page.dart) -->
+        <div class="pstep on" id="sub-phone">
+          <p style="text-align:center">
+            <span class="pill-badge">
+              <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2.6l1.7 4.9 4.9 1.7-4.9 1.7L12 15.8l-1.7-4.9-4.9-1.7 4.9-1.7zM18.4 14l.9 2.3 2.3.9-2.3.9-.9 2.3-.9-2.3-2.3-.9 2.3-.9zM5.3 3l.7 1.8 1.8.7-1.8.7L5.3 8l-.7-1.8L2.8 5.5l1.8-.7z"/></svg>
+              <span data-i18n="ac.pill">Listen together, anywhere</span>
+            </span>
+          </p>
+          <h3 data-i18n="ac.welcome">Welcome to ShurAdda</h3>
+          <p class="ac-sub" data-i18n="ac.started">Enter your mobile number to get started.</p>
+
+          <label class="ac-label" for="sub-num" data-i18n="ac.numlabel">MOBILE NUMBER</label>
+          <div class="phone-pill">
+            <span class="bdflag" aria-hidden="true"></span>
+            <span class="cc">+88</span>
+            <span class="pill-div" aria-hidden="true"></span>
+            <input id="sub-num" type="tel" inputmode="numeric" autocomplete="tel"
+                   maxlength="11" placeholder="01XXXXXXXXX" data-i18n-ph="ac.numph"
+                   aria-describedby="sub-err" />
+          </div>
+          <div class="charge">
+            <span class="i" aria-hidden="true">i</span>
+            <p data-i18n="ac.charge">Daily charge ৳2.78 (incl. VAT + SD + SC) — only for Robi and Cirkle customers.</p>
+          </div>
+
+          <!-- Tapping one writes its prefix into the field; the selected state
+               is read back out of the digits, so the two can never disagree. -->
+          <div class="ops">
+            <button class="op" type="button" data-prefix="018" aria-pressed="false">
+              <span class="tick" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12.5l5.5 5.5L20 6.5"/></svg></span>
+              <span class="nm">Robi</span><span class="px">018</span>
+            </button>
+            <button class="op" type="button" data-prefix="016" aria-pressed="false">
+              <span class="tick" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12.5l5.5 5.5L20 6.5"/></svg></span>
+              <span class="nm">Cirkle</span><span class="px">016</span>
+            </button>
+          </div>
+
+          <p class="ac-err" id="sub-err" role="status" aria-live="polite" hidden></p>
+
+          <button class="cta-grad" id="sub-go" type="button">
+            <span class="spin" aria-hidden="true"></span>
+            <span data-i18n="ac.continue">Continue</span>
+            <span aria-hidden="true">→</span>
+          </button>
+          <p class="fine" data-i18n="ac.nocard">No card needed. Cancel anytime.</p>
+          <p class="finer" data-i18n="ac.agree">
+            By continuing you agree to be charged the daily subscription fee until
+            you cancel.
+          </p>
+          <p class="working" id="sub-slow" hidden data-i18n="ac.sending">
+            Still working — the first request of the day can take up to a minute.
+            Please keep this page open.
+          </p>
+        </div>
+
+          <!-- step 2 — the code, and a name if this number is new (otp_verify_page.dart) -->
+          <div class="pstep" id="sub-code">
+            <button class="back-btn" id="sub-restart" type="button" aria-label="Back">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5m0 0l6-6m-6 6l6 6"/></svg>
+            </button>
+            <div class="ac-badge" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.4 8.4 0 0 1-8.5 8.5 9 9 0 0 1-3.8-.8L3 21l1.9-5.2A8.4 8.4 0 0 1 4 11.5 8.4 8.4 0 0 1 12.5 3 8.4 8.4 0 0 1 21 11.5z"/><path d="M8.5 11.5h.01M12.5 11.5h.01M16.5 11.5h.01"/></svg>
+            </div>
+            <h4 data-i18n="ac.codeh">Enter verification code</h4>
+            <p class="ac-sub2">
+              <span data-i18n="ac.sent1">We sent a 6-digit code to</span>
+              <b id="sub-shown-num"></b><span data-i18n="ac.sent2">.</span>
+            </p>
+
+            <!-- One input under six painted cells: a pasted or autofilled code
+                 arrives whole instead of being split between boxes. -->
+            <div class="code-card">
+              <div class="cells" id="sub-cells" aria-hidden="true">
+                <div class="cell"></div><div class="cell"></div><div class="cell"></div>
+                <div class="cell"></div><div class="cell"></div><div class="cell"></div>
+              </div>
+              <input id="otp" type="text" inputmode="numeric" autocomplete="one-time-code"
+                     maxlength="6" aria-label="6-digit code" />
+            </div>
+
+            <div id="sub-name-wrap" hidden>
+              <label class="ac-label" for="sub-name" data-i18n="ac.namelabel">YOUR NAME</label>
+              <input class="name-field" id="sub-name" type="text" autocomplete="nickname"
+                     maxlength="50" placeholder="Shown to others in listening rooms"
+                     data-i18n-ph="ac.nameph" />
+            </div>
+
+            <p class="ac-err" id="sub-err2" role="status" aria-live="polite" hidden></p>
+
+            <button class="cta-solid" id="sub-verify" type="button">
+              <span class="spin" aria-hidden="true"></span>
+              <span data-i18n="ac.verify">Verify &amp; continue</span>
+            </button>
+            <p class="working" id="sub-working" hidden data-i18n="ac.working">
+              Verifying — this can take up to a minute. Please keep this page open.
+            </p>
+          </div>
+          <!-- step 3 — already subscribed: no code sent, nothing charged -->
+          <div class="pstep" id="sub-already">
+            <svg class="done-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-1 15-4-4 1.4-1.4L11 14.2l5.6-5.6L18 10z"/></svg>
+            <h4 data-i18n="sp.alreadyh">This number is already subscribed</h4>
+            <p class="ac-sub2" data-i18n="sp.alreadyb">
+              Nothing was sent and nothing was charged. Open ShurAdda, enter this
+              number, and it will sign you in.
+            </p>
+            <p class="ac-sub2" id="sub-already-extra" hidden data-i18n="sp.alreadyextra">
+              Because you have not set up a profile yet, the app will send you one
+              code the first time you open it so you can pick a display name. That
+              costs nothing extra.
+            </p>
+            <button class="btn btn-ghost btn-block" id="sub-again" type="button"
+                    style="margin-top:22px" data-i18n="sp.other">Check another number</button>
+          </div>
+
+          <!-- step 4 — subscribed -->
+          <div class="pstep" id="sub-done">
+            <svg class="done-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-1 15-4-4 1.4-1.4L11 14.2l5.6-5.6L18 10z"/></svg>
+            <h4 data-i18n="sp.doneh">You're subscribed</h4>
+            <p class="ac-sub2" data-i18n="sp.doneb">
+              Install ShurAdda and enter the same number — no second code, no second
+              charge. Your first day starts now.
+            </p>
+            <p class="ac-sub2" id="sub-done-extra" hidden data-i18n="sp.doneextra">
+              One thing left: your profile was not created, so the app will ask for a
+              single code the first time you open it. Your subscription is active
+              either way and you will not be charged again for it.
+            </p>
+          </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── FAQ ──────────────────────────────────────────────── -->
+  <section id="faq" class="sec">
+    <div class="wrap">
+      <div class="sec-head reveal">
+        <span class="eyebrow" data-i18n="faq.eyebrow">Questions</span>
+        <h2 data-i18n="faq.h2">The things people ask.</h2>
+      </div>
+      <div class="faq reveal">
+        <details>
+          <summary data-i18n="q1">Which numbers can subscribe?</summary>
+          <div class="ans" data-i18n="a1">
+            Robi (018) and Cirkle (016) numbers. Other operators are not supported
+            yet, so the form will stop you before a code is sent rather than let you
+            waste an attempt.
+          </div>
+        </details>
+        <details>
+          <summary data-i18n="q2">Will I be charged twice if I subscribe here and then sign in on the app?</summary>
+          <div class="ans" data-i18n="a2">
+            No. Both this page and the app ask your operator whether the number is
+            already active before they do anything. An active number is let straight
+            through — no code, no second charge.
+          </div>
+        </details>
+        <details>
+          <summary data-i18n="q3">How do I cancel?</summary>
+          <div class="ans" data-i18n="a3">
+            In the app: open the menu and tap Unsubscribe. It takes one tap and no
+            code, because you are already signed in on that number. Billing stops
+            from the next cycle; the day you have paid for is not refunded. The app
+            can keep letting you in for a few hours afterwards, since it only
+            re-checks with your operator every 12 hours — that extra time is free.
+          </div>
+        </details>
+        <details>
+          <summary data-i18n="q4">Do I need a password?</summary>
+          <div class="ans" data-i18n="a4">
+            No. Your number is the account. Anyone signing in has to receive a code on
+            that SIM, which is why there is nothing to forget and nothing to leak.
+          </div>
+        </details>
+        <details>
+          <summary data-i18n="q5">Does a hotspot party really use no data?</summary>
+          <div class="ans" data-i18n="a5">
+            Correct — the host's phone serves the audio over the local WiFi network
+            itself. Only songs stored on the host's device can be played that way;
+            the cloud library needs the internet.
+          </div>
+        </details>
+        <details>
+          <summary data-i18n="q6">What if the code never arrives?</summary>
+          <div class="ans" data-i18n="a6">
+            Give it a few seconds — the first SMS of the day is the slowest. If it
+            still has not arrived, go back and enter your number again. Your operator
+            limits how many codes one number can get in a short window, so if it keeps
+            failing, wait a couple of minutes before trying once more.
+          </div>
+        </details>
+        <details>
+          <summary data-i18n="q7">Where do I get the app?</summary>
+          <div class="ans" data-i18n="a7">
+            ShurAdda is distributed directly rather than through an app store for now.
+            Subscribe first, then use the download link you are given — the same number
+            signs you in.
+          </div>
+        </details>
+      </div>
+    </div>
+  </section>
+
+</main>
+<footer>
+  <div class="wrap">
+    <div class="foot-grid">
+      <div>
+        <a class="brand" href="#top" style="margin-bottom:14px">
+          <svg viewBox="0 0 64 64" aria-hidden="true">
+            <rect width="64" height="64" rx="14" fill="#1DB954" opacity=".14"></rect>
+            <g fill="#1DB954">
+              <rect x="14" y="26" width="7" height="12" rx="3.5"></rect>
+              <rect x="28" y="16" width="7" height="32" rx="3.5"></rect>
+              <rect x="42" y="22" width="7" height="20" rx="3.5"></rect>
+            </g>
+          </svg>
+          ShurAdda
+        </a>
+        <p class="muted" style="font-size:var(--f-1);max-width:34ch" data-i18n="foot.blurb">
+          A music player that plays on every phone at once. Built in Bangladesh,
+          for the way people here actually share music.
+        </p>
+      </div>
+      <div>
+        <h4 data-i18n="foot.product">Product</h4>
+        <ul>
+          <li><a href="#features" data-i18n="nav.features">Features</a></li>
+          <li><a href="#how" data-i18n="nav.how">How it works</a></li>
+          <li><a href="#subscribe" data-i18n="nav.subscribe">Subscribe</a></li>
+          <li><a href="#faq" data-i18n="nav.faq">FAQ</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4 data-i18n="foot.support">Support</h4>
+        <ul>
+          <li><a href="mailto:support@bdappsdigitalapps.com">support@bdappsdigitalapps.com</a></li>
+          <li><span data-i18n="foot.hours">Replies within 1 working day</span></li>
+          <li><a href="#faq" data-i18n="foot.cancel">How to cancel</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="foot-bottom">
+      <span data-i18n="foot.copy">© 2026 ShurAdda. All rights reserved.</span>
+      <span data-i18n="foot.price">Tk 2.78/day incl. VAT &amp; SD · Robi 018 &amp; Cirkle 016</span>
+    </div>
+  </div>
+</footer>
+<script>
+(function () {
+  "use strict";
+
+  /* ═══════════════════════════════════════════════════════════════
+     GATEWAY
+
+     Same PHP endpoints the Flutter app calls (see
+     lib/data/datasources/remote/bdapps_api.dart). Field names and the
+     capital "Otp" are load-bearing: verify_otp.php reads $_POST['Otp'],
+     and a lowercase "otp" verifies an empty string.
+
+     Hosting: keep this file on bdappsdigitalapps.com so the POSTs are
+     same-origin and CORS never comes up. If it is served from anywhere
+     else, PHP has to send Access-Control-Allow-Origin — until then the
+     absolute fallback below will be blocked by the browser.
+     ═══════════════════════════════════════════════════════════════ */
+  var GATEWAY = (function () {
+    var host = location.hostname;
+    var path = location.pathname;
+    if (/bdappsdigitalapps\.com$/i.test(host) || host === "localhost" || host === "127.0.0.1") {
+      return /shuradda_subscription_apis/i.test(path)
+        ? "./"                              // page sits inside the API folder
+        : "/shuradda_subscription_apis/";   // page sits at the web root
+    }
+    return "https://bdappsdigitalapps.com/shuradda_subscription_apis/";
+  })();
+
+  // Deliberately NOT sending mint_token=1 anywhere on this page: that makes PHP
+  // mint an app session (and stretches the call past 90s) for a browser that has
+  // no use for one. verify_otp.php returns tokens regardless — we drop them.
+  var T_CHECK = 45000, T_SEND = 45000, T_VERIFY = 110000;
+
+  /** Mirrors _toLocal(): 8801XXXXXXXXX / 881XXXXXXXXX / +880… all fold to 01…  */
+  function toLocal(raw) {
+    var d = String(raw || "").replace(/\D/g, "");
+    if (d.indexOf("880") === 0) d = "0" + d.slice(3);
+    else if (d.indexOf("88") === 0) d = "0" + d.slice(2);
+    else if (d.indexOf("1") === 0 && d.length === 10) d = "0" + d;
+    return d;
+  }
+
+  /** Same three checks, in the same order, as BdPhone.validate(). */
+  function numberProblem(local) {
+    if (!local) return "err.empty";
+    if (!/^01[0-9]{9}$/.test(local)) return "err.badnum";
+    if (!/^01[68]/.test(local)) return "err.carrier";
+    return null;
+  }
+  /** Mirrors _bool(): PHP is loose about what it calls true. */
+  function truthy(v) {
+    return v === true || v === 1 || v === "1" || String(v).toLowerCase() === "true";
+  }
+
+  /**
+   * Mirrors _decode(): the response may be a JSON object, a JSON string, or JSON
+   * with stray PHP notices printed in front of it. Anything else is a real fault.
+   */
+  function decode(text) {
+    try { return JSON.parse(text); } catch (e) { /* fall through */ }
+    var i = text.indexOf("{");
+    var j = text.lastIndexOf("}");
+    if (i !== -1 && j > i) {
+      try { return JSON.parse(text.slice(i, j + 1)); } catch (e2) { /* fall through */ }
+    }
+    return null;
+  }
+
+  /**
+   * form-encoded POST with a timeout.
+   *
+   * Retries once, and only on a transport failure — never on an HTTP status.
+   * A 4xx/5xx from PHP means the request arrived and was answered, and OTP
+   * endpoints are not safe to replay.
+   */
+  function post(file, fields, timeout, retried) {
+    var body = new URLSearchParams();
+    Object.keys(fields).forEach(function (k) {
+      if (fields[k] !== undefined && fields[k] !== null && fields[k] !== "") body.append(k, fields[k]);
+    });
+
+    var ctrl = new AbortController();
+    var timer = setTimeout(function () { ctrl.abort(); }, timeout);
+
+    return fetch(GATEWAY + file, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8" },
+      body: body.toString(),
+      signal: ctrl.signal,
+      credentials: "omit",
+      cache: "no-store"
+    })
+      .then(function (res) { return res.text(); })
+      .then(function (text) {
+        clearTimeout(timer);
+        var data = decode(text);
+        if (!data) throw new Error("err.badreply");
+        return data;
+      })
+      .catch(function (err) {
+        clearTimeout(timer);
+        // "err.badreply" came from a response we did receive, so it is not retried.
+        if (!retried && err && err.message !== "err.badreply") {
+          return post(file, fields, timeout, true);
+        }
+        throw new Error(err && err.name === "AbortError" ? "err.timeout" : "err.network");
+      });
+  }
+
+  /* ═══════════════════════════════════════════════════════════════
+     UI helpers
+     ═══════════════════════════════════════════════════════════════ */
+  var $ = function (id) { return document.getElementById(id); };
+
+  function busy(btn, on) {
+    btn.classList.toggle("is-busy", on);
+    btn.disabled = on;
+  }
+
+  /**
+   * Errors read like the app's: one line of red text under the fields of the
+   * step you are on, not a banner. `key` is an i18n key, `fallback` is literal
+   * server text. Pass nothing to clear.
+   */
+  function say(key, fallback) {
+    ["sub-err", "sub-err2"].forEach(function (id) {
+      var el = $(id);
+      el.hidden = true;
+      el.removeAttribute("data-i18n");
+      el.textContent = "";
+    });
+    if (!key && !fallback) return;
+    var el = $($("sub-code").classList.contains("on") ? "sub-err2" : "sub-err");
+    if (key) { el.setAttribute("data-i18n", key); el.innerHTML = t(key); }
+    else { el.textContent = fallback; }
+    el.hidden = false;
+  }
+
+  /** The "this can take a minute" line, per step. Pass null to hide both. */
+  function working(id) {
+    ["sub-slow", "sub-working"].forEach(function (w) { $(w).hidden = w !== id; });
+  }
+
+  function step(ids, on) {
+    ids.forEach(function (id) { $(id).classList.toggle("on", id === on); });
+    var first = $(on).querySelector("input");
+    if (first) setTimeout(function () { first.focus(); }, 60);
+  }
+
+  /**
+   * Turns a gateway reply into something a visitor can act on.
+   *
+   * BDApps status codes leak through `message` verbatim, and "E1343" means nothing
+   * to anyone. Known codes get real copy; the raw text goes to the console so it is
+   * still there when debugging.
+   */
+  function friendly(data, fallbackKey) {
+    var raw = data && data.message ? String(data.message) : "";
+    if (raw) console.warn("[gateway]", raw);
+    if (/E1343/i.test(raw)) return "err.whitelist";
+    if (/E1351/i.test(raw)) return "err.already";
+    if (/E1951|E1352/i.test(raw)) return "err.retry";
+    if (/invalid|incorrect|wrong|mismatch/i.test(raw)) return "err.badcode";
+    if (/expire/i.test(raw)) return "err.expired";
+    return fallbackKey;
+  }
+
+  /* ═══════════════════════════════════════════════════════════════
+     Subscribe
+     ═══════════════════════════════════════════════════════════════ */
+  var SUB_STEPS = ["sub-phone", "sub-code", "sub-already", "sub-done"];
+  var sub = { phone: "", ref: "", needsName: true };
+  var numInput = $("sub-num"), otpInput = $("otp"), nameInput = $("sub-name");
+
+  /* Operator pills. The field is the only source of truth: a pill writes a
+     prefix into it and then every pill reads its own state back out, so the
+     highlight can never disagree with the digits on screen. */
+  var ops = Array.prototype.slice.call(document.querySelectorAll(".op"));
+  function paintOps() {
+    var p = numInput.value.slice(0, 3);
+    ops.forEach(function (b) {
+      b.setAttribute("aria-pressed", b.getAttribute("data-prefix") === p ? "true" : "false");
+    });
+  }
+  ops.forEach(function (b) {
+    b.addEventListener("click", function () {
+      var d = numInput.value.replace(/\D/g, "");
+      numInput.value = (b.getAttribute("data-prefix") + (d.length > 3 ? d.slice(3) : "")).slice(0, 11);
+      paintOps();
+      numInput.focus();
+    });
+  });
+
+  /* Six painted cells over one real input, so an autofilled or pasted code
+     arrives whole. */
+  var cellEls = Array.prototype.slice.call($("sub-cells").children);
+  function paintCells() {
+    var v = otpInput.value;
+    cellEls.forEach(function (c, i) {
+      c.textContent = v.charAt(i);
+      c.classList.toggle("filled", !!v.charAt(i));
+      c.classList.toggle("active", i === Math.min(v.length, 5));
+    });
+  }
+  otpInput.addEventListener("input", function () {
+    var v = otpInput.value.replace(/\D/g, "").slice(0, 6);
+    if (v !== otpInput.value) otpInput.value = v;
+    paintCells();
+    // Auto-submit on the sixth digit, as the app does — but send focus to the
+    // name first while it is still empty, because verify_otp.php needs a name
+    // for a new number and by then the operator has already started billing.
+    if (v.length === 6) {
+      if (sub.needsName && !nameInput.value.trim()) nameInput.focus();
+      else $("sub-verify").click();
+    }
+  });
+  otpInput.addEventListener("focus", paintCells);
+  // Keep the caret at the end so typing always lands in the next empty cell.
+  otpInput.addEventListener("click", function () {
+    otpInput.setSelectionRange(otpInput.value.length, otpInput.value.length);
+  });
+
+  $("sub-go").addEventListener("click", function () {
+    var btn = this;
+    var local = toLocal(numInput.value);
+    var problem = numberProblem(local);
+    if (problem) { say(problem); numInput.focus(); return; }
+
+    say();
+    busy(btn, true);
+    var slow = setTimeout(function () { working("sub-slow"); }, 8000);
+    function settle() { clearTimeout(slow); working(null); busy(btn, false); }
+
+    // No mint_token: the page only wants the subscription verdict, and a browser
+    // has no use for an app session.
+    post("check_subscription.php", { user_mobile: local }, T_CHECK)
+      .then(function (data) {
+        sub.phone = local;
+
+        if (truthy(data.subscribed)) {
+          // Short-circuit exactly as the app does. No OTP is sent, so there is no
+          // way for a second charge to happen here.
+          settle();
+          $("sub-already-extra").hidden = truthy(data.has_account);
+          step(SUB_STEPS, "sub-already");
+          return null;
+        }
+        // A number with no account row must reach verify_otp.php with a name:
+        // /internal/issue-token rejects a nameless new subscriber with 400, and by
+        // then the telco has already started billing.
+        sub.needsName = !truthy(data.has_account);
+        return post("send_otp.php", { user_mobile: local }, T_SEND);
+      })
+      .then(function (data) {
+        if (!data) return;
+        settle();
+        // OtpSendResult treats a blank referenceNo as a failure, and so must we:
+        // verify_otp.php cannot do anything without it.
+        if (!truthy(data.success) || !data.referenceNo) {
+          say(friendly(data, "err.sendfail"));
+          return;
+        }
+        sub.ref = String(data.referenceNo);
+        $("sub-shown-num").textContent = sub.phone;
+        $("sub-name-wrap").hidden = !sub.needsName;
+        step(SUB_STEPS, "sub-code");
+        paintCells();
+      })
+      .catch(function (err) {
+        settle();
+        say(err.message);
+      });
+  });
+
+  $("sub-verify").addEventListener("click", function () {
+    var btn = this;
+    var code = otpInput.value.replace(/\D/g, "");
+    var name = nameInput.value.trim();
+
+    if (code.length < 6) { say("err.needcode"); otpInput.focus(); return; }
+    if (sub.needsName && !name) { say("err.needname"); nameInput.focus(); return; }
+
+    say();
+    busy(btn, true);
+    // The app puts this note up for the whole wait, not after a delay: verify is
+    // the one call that regularly takes tens of seconds.
+    working("sub-working");
+    function settle() { working(null); busy(btn, false); }
+
+    // "Otp" is capitalised on purpose — see the note at the top.
+    post("verify_otp.php", {
+      user_mobile: sub.phone,
+      Otp: code,
+      referenceNo: sub.ref,
+      username: sub.needsName ? name.slice(0, 50) : ""
+    }, T_VERIFY)
+      .then(function (data) {
+        settle();
+        if (!truthy(data.success)) {
+          say(friendly(data, "err.badcode"));
+          otpInput.select();
+          return;
+        }
+
+        // The reply carries access_token / refresh_token. A browser has no use for
+        // an app session and storing one here would only be a liability, so they are
+        // read and dropped. token_error means the subscription is live but the
+        // account row was not written — the app will collect the name on first run.
+        $("sub-done-extra").hidden = !truthy(data.token_error);
+        step(SUB_STEPS, "sub-done");
+      })
+      .catch(function (err) {
+        settle();
+        say(err.message);
+      });
+  });
+
+  function resetSub() {
+    sub = { phone: "", ref: "", needsName: true };
+    otpInput.value = "";
+    nameInput.value = "";
+    numInput.value = "";
+    paintCells();
+    paintOps();
+    say();
+    working(null);
+    step(SUB_STEPS, "sub-phone");
+  }
+  $("sub-restart").addEventListener("click", resetSub);
+  $("sub-again").addEventListener("click", resetSub);
+
+  // Enter submits whichever field is focused.
+  [["sub-num", "sub-go"], ["otp", "sub-verify"], ["sub-name", "sub-verify"]]
+    .forEach(function (pair) {
+      $(pair[0]).addEventListener("keydown", function (e) {
+        if (e.key === "Enter") { e.preventDefault(); $(pair[1]).click(); }
+      });
+    });
+
+  /* ═══════════════════════════════════════════════════════════════
+     Language (EN ⇄ বাংলা)
+
+     English lives in the markup and is captured on load, so only the Bengali
+     side is a dictionary — there is no second copy of the English text to drift
+     out of sync.
+     ═══════════════════════════════════════════════════════════════ */
+  var EN = {}, EN_PH = {}, lang = "en";
+
+  document.querySelectorAll("[data-i18n]").forEach(function (el) {
+    EN[el.getAttribute("data-i18n")] = el.innerHTML.trim();
+  });
+  document.querySelectorAll("[data-i18n-ph]").forEach(function (el) {
+    EN_PH[el.getAttribute("data-i18n-ph")] = el.getAttribute("placeholder") || "";
+  });
+
+  function t(key) {
+    if (lang === "bn" && BN[key]) return BN[key];
+    return EN[key] || "";
+  }
+  // Status copy has no home in the markup, so its English lives here and is
+  // merged into the captured set. The first four are BdPhone.validate()'s and
+  // the OTP page's own wording, word for word.
+  var EN_MSG = {
+    "err.empty":      "Enter your mobile number.",
+    "err.badnum":     "Enter an 11-digit number starting with 01, e.g. 01XXXXXXXXX.",
+    "err.carrier":    "Only Robi (018) and Cirkle (016) numbers can subscribe.",
+    "err.needcode":   "Enter all 6 digits of the code.",
+    "err.needname":   "Enter a name so friends can recognise you.",
+    "err.badreply":   "The subscription service sent something we could not read. Please try again.",
+    "err.timeout":    "That took too long. Check your connection and try again.",
+    "err.network":    "We could not reach the subscription service. Please try again.",
+    "err.sendfail":   "We could not send the code. Please try again in a moment.",
+    "err.badcode":    "That code was not accepted. Check it and try again.",
+    "err.expired":    "That code has expired. Go back and ask for a new one.",
+    "err.whitelist":  "This number is not cleared for ShurAdda yet. Please contact support.",
+    "err.already":    "This number is already subscribed — nothing was charged.",
+    "err.retry":      "The operator did not answer clearly. Please try once more."
+  };
+  Object.keys(EN_MSG).forEach(function (k) { EN[k] = EN_MSG[k]; });
+
+  var BN = {
+    "nav.features": "ফিচার",
+    "nav.how": "যেভাবে কাজ করে",
+    "nav.subscribe": "সাবস্ক্রাইব",
+    "nav.faq": "প্রশ্নোত্তর",
+    "nav.cta": "অ্যাপ ডাউনলোড",
+
+    "hero.eyebrow": "রবি ও সার্কেল নম্বরের জন্য",
+    "hero.h1": "একটা মিউজিক প্লেয়ার, যেটা <em>সব ফোনে একসাথে বাজে</em>।",
+    "hero.sub": "প্লেয়ারে যা যা লাগে সবই আছে — নিজের গান, শেয়ার্ড লাইব্রেরি, লাইভ রেডিও। তারপর গানটা আশপাশের ফোনগুলোতে পাঠিয়ে দিন, সবগুলো একই সেকেন্ডে বাজবে: চারটা ফোন একসাথে বাজলে আওয়াজটা একটা বড় স্পিকারের মতো, আর কাউকে এক জোড়া ইয়ারফোন ভাগ করতে হয় না।",
+    "hero.cta1": "সাবস্ক্রাইব — দিনে ৳২.৭৮",
+    "hero.cta2": "সুরআড্ডা অ্যাপ ডাউনলোড করুন",
+    "hero.m1": "রবি ০১৮ ও সার্কেল ০১৬",
+    "hero.m2": "প্রতিদিন চার্জ, যখন চান বন্ধ",
+    "hero.m3": "কার্ড লাগবে না, পাসওয়ার্ডও না",
+
+    "price.tag": "দৈনিক সাবস্ক্রিপশন",
+    "price.per": "/ দিন",
+    "price.incl": "ভ্যাট ও এসডি সহ। আপনার মোবাইল ব্যালেন্স থেকে কাটা হবে।",
+    "price.f1": "আশপাশের ফোনগুলো মিলে একটা স্পিকার",
+    "price.f2": "হটস্পটে, নয়তো ইন্টারনেটে",
+    "price.f3": "শেয়ার্ড ক্লাউড লাইব্রেরি ও নিজের গান",
+    "price.f4": "লাইভ রেডিও — দেশি ও বিদেশি",
+    "price.note": "এক নম্বর, এক সাবস্ক্রিপশন। পরে অ্যাপে ঢুকলে দ্বিতীয়বার চার্জ হবে না — নম্বর চালু থাকলে কোড ছাড়াই ঢুকে যাবেন।",
+    "cap.host": "হোস্ট",
+    "cap.listener": "শ্রোতা",
+
+    "f1.h": "আশপাশের ফোনগুলোই হয়ে যায় স্পিকার",
+    "f1.b": "একজন হটস্পট চালু করে, বাকিরা তাতে যোগ দেয়, আর গান সেই ফোন থেকেই সবার কাছে যায় — একই সেকেন্ডে। চারটা ফোনে একই গান একসাথে বাজলে আওয়াজও চার গুণ — <strong>স্পিকার কিনতে বা বয়ে বেড়াতে হলো না</strong>। ইন্টারনেট লাগে না, ডেটা খরচও নেই, আর এক জোড়া ইয়ারফোন ভাগ করে শুনতেও হয় না।",
+    "f1.c1": "একসাথে বাজলে জোরে",
+    "f1.c2": "ইন্টারনেট লাগে না",
+    "f1.c3": "ইয়ারফোন ভাগ করা লাগে না",
+
+    "f2.h": "নয়তো যত দূর থেকেই",
+    "f2.b": "একসাথে নেই? তাহলে ইন্টারনেটে পার্টি খুলুন, কোডটা শেয়ার করুন — সবাই একই সেকেন্ডে শেয়ার্ড লাইব্রেরি থেকে শুনবে, আর প্লে, পজ, স্কিপ যারা যোগ দিয়েছে সবার ফোনে পৌঁছে যায়। <strong>হোস্ট চালায়, বাকিরা শোনে</strong> — পাশের বাড়ি থেকে হোক বা পাশের জেলা থেকে।",
+    "f2.c1": "পার্টি কোড",
+    "f2.c2": "লাইভ সিঙ্ক",
+    "f2.c3": "যত দূরেই হোক",
+
+    "f3.h": "শেয়ার্ড ক্লাউড লাইব্রেরি",
+    "f3.b": "সুরআড্ডায় আপলোড করা গান অ্যাপের সবার জন্যই থাকে, তাই ফাইল খোঁজাখুঁজি না করেই কিছু একটা চালানো যায় — আর কারও কাছে গানটা নেই বলে পার্টিও থামে না। <strong>খুঁজুন, কিউতে দিন, চালান</strong> — ফাইল পাঠানোর ঝামেলা ছাড়াই।",
+    "f3.c1": "স্ট্রিমিং",
+    "f3.c2": "সবার জন্য",
+
+    "f4.h": "ফোনে আগে থেকেই যে গান আছে",
+    "f4.b": "আপনার ফোনে যে অডিও আছে, সুরআড্ডা সেগুলোও বাকি সবকিছুর মতো একই কিউতে, একই কন্ট্রোলে চালায় — <strong>সাধারণ একটা মিউজিক প্লেয়ার, কিছু আপলোড করার দরকার নেই</strong>। হটস্পট পার্টিতে সেই গানই সরাসরি সবাইকে শোনানো যায়।",
+    "f4.c1": "ফোনেই আছে",
+    "f4.c2": "অফলাইনে চলে",
+
+    "f5.h": "লাইভ রেডিও",
+    "f5.b": "এক ট্যাবে বাংলাদেশি স্টেশন, আরেকটায় সারা দুনিয়ার — যেগুলো মানুষ আসলে শোনে সেই অনুযায়ী সাজানো। <strong>চাপ দিলেই চলে</strong> — নষ্ট স্ট্রিমগুলো আগেই বাদ দেওয়া হয়।",
+    "f5.c1": "দেশি",
+    "f5.c2": "আন্তর্জাতিক",
+
+    "f6.h": "আপনি সরে গেলেও চলতে থাকে",
+    "f6.b": "স্ক্রিন লক করুন বা অন্য অ্যাপে যান — গান চলতেই থাকে, নোটিফিকেশন আর লক স্ক্রিনে কন্ট্রোল থাকে। <strong>আপনার হোস্ট করা পার্টি টিকে থাকে</strong>, ফোন ঘুমিয়ে গেলেই সবাই বাদ পড়ে না।",
+    "f6.c1": "ব্যাকগ্রাউন্ড অডিও",
+    "f6.c2": "লক স্ক্রিন কন্ট্রোল",
+
+    "how.eyebrow": "শুরু করা",
+    "how.h2": "আপনার নম্বরই আপনার অ্যাকাউন্ট।",
+    "how.sub": "নতুন পাসওয়ার্ড ভাবতে হবে না, কার্ডও দিতে হবে না। সাবস্ক্রিপশন আর অ্যাকাউন্ট একই জিনিস, দুটোই আপনার সিমে।",
+    "how.s1h": "নম্বর দিন",
+    "how.s1b": "নিচে আপনার রবি বা সার্কেল নম্বর লিখুন। কিছু পাঠানোর আগেই আমরা দেখে নিই নম্বরটা আগে থেকে সাবস্ক্রাইব করা কি না, যাতে দুবার টাকা না কাটে।",
+    "how.s2h": "কোড দিয়ে নিশ্চিত করুন",
+    "how.s2b": "এসএমএসে একটি কোড আসবে। কোডটি আর যে নামে অন্যরা আপনাকে চিনবে সেই নামটি লিখলেই সাবস্ক্রিপশন শুরু।",
+    "how.s3h": "অ্যাপ খুলুন",
+    "how.s3b": "সুরআড্ডা ইনস্টল করে একই নম্বর দিন — আর কোনো কোড ছাড়াই ঢুকে যাবেন। সব তৈরি।",
+    "sub.eyebrow": "সাবস্ক্রাইব",
+    "sub.h2": "এখানেই শুরু করুন।",
+    "sub.sub": "অ্যাপে যে দুটো স্ক্রিন দেখতে পান, ঠিক সেগুলোই এখানে — নতুন কিছু শেখার নেই। এখানে সাবস্ক্রাইব করলে অ্যাপ সোজা ঢুকতে দেবে।",
+
+    "ac.pill": "একসাথে শোনা, যেখানেই থাকুন",
+    "ac.welcome": "সুরআড্ডায় স্বাগতম",
+    "ac.started": "শুরু করতে আপনার মোবাইল নম্বর দিন।",
+    "ac.numlabel": "মোবাইল নম্বর",
+    "ac.numph": "০১XXXXXXXXX",
+    "ac.charge": "দিনে ৳২.৭৮ চার্জ (ভ্যাট + এসডি + এসসি সহ) — শুধু রবি ও সার্কেল গ্রাহকদের জন্য।",
+    "ac.continue": "এগিয়ে যান",
+    "ac.nocard": "কার্ড লাগবে না। যখন চান বাতিল করুন।",
+    "ac.agree": "এগিয়ে গেলে আপনি সম্মত হচ্ছেন যে বাতিল করার আগ পর্যন্ত প্রতিদিনের সাবস্ক্রিপশন ফি কাটা হবে।",
+    "ac.sending": "কাজ চলছে — দিনের প্রথম অনুরোধে এক মিনিট পর্যন্ত লাগতে পারে। পেজটি খোলা রাখুন।",
+    "ac.codeh": "ভেরিফিকেশন কোড দিন",
+    "ac.sent1": "৬ সংখ্যার একটি কোড পাঠানো হয়েছে",
+    "ac.sent2": " নম্বরে।",
+    "ac.namelabel": "আপনার নাম",
+    "ac.nameph": "রুমে অন্যরা যে নামটি দেখবে",
+    "ac.verify": "ভেরিফাই করে এগিয়ে যান",
+    "ac.working": "ভেরিফাই করা হচ্ছে — এক মিনিট পর্যন্ত লাগতে পারে। পেজটি খোলা রাখুন।",
+
+    "sp.alreadyh": "এই নম্বর আগেই সাবস্ক্রাইব করা আছে",
+    "sp.alreadyb": "কোনো কোড পাঠানো হয়নি, টাকাও কাটা হয়নি। সুরআড্ডা খুলে এই নম্বরটি দিলেই ঢুকে যাবেন।",
+    "sp.alreadyextra": "আপনার প্রোফাইল এখনো তৈরি হয়নি, তাই অ্যাপ প্রথমবার একটি কোড পাঠাবে যাতে আপনি নাম বেছে নিতে পারেন। এতে বাড়তি কোনো খরচ নেই।",
+    "sp.other": "অন্য নম্বর দেখুন",
+    "sp.doneh": "সাবস্ক্রিপশন চালু হয়েছে",
+    "sp.doneb": "সুরআড্ডা ইনস্টল করে একই নম্বর দিন — আর কোনো কোড নেই, দ্বিতীয়বার চার্জও নেই। আপনার প্রথম দিন শুরু হলো।",
+    "sp.doneextra": "একটা কাজ বাকি: আপনার প্রোফাইল তৈরি হয়নি, তাই অ্যাপ প্রথমবার একটি কোড চাইবে। সাবস্ক্রিপশন কিন্তু চালু আছে এবং এর জন্য আবার চার্জ হবে না।",
+
+    "faq.eyebrow": "জিজ্ঞাসা",
+    "faq.h2": "যা মানুষ জানতে চায়।",
+    "q1": "কোন নম্বরগুলো সাবস্ক্রাইব করতে পারবে?",
+    "a1": "রবি (০১৮) ও সার্কেল (০১৬) নম্বর। অন্য অপারেটর এখনো সমর্থিত নয়, তাই কোড পাঠিয়ে চেষ্টা নষ্ট করার বদলে ফর্মটি আগেই আপনাকে থামিয়ে দেবে।",
+    "q2": "এখানে সাবস্ক্রাইব করে অ্যাপে ঢুকলে দুবার চার্জ হবে?",
+    "a2": "না। এই পেজ আর অ্যাপ — দুটোই কিছু করার আগে অপারেটরকে জিজ্ঞেস করে নম্বরটা আগে থেকে চালু কি না। চালু থাকলে সোজা ঢুকিয়ে দেয় — কোড নেই, দ্বিতীয় চার্জও নেই।",
+    "q3": "বাতিল করব কীভাবে?",
+    "a3": "অ্যাপে মেনু খুলে Unsubscribe চাপুন। এক চাপেই হয়ে যায়, কোনো কোড লাগে না — কারণ ওই নম্বরেই আপনি সাইন-ইন করা আছেন। পরের চক্র থেকে বিল বন্ধ; যেদিনের টাকা কাটা হয়েছে তা ফেরত হয় না। অ্যাপ প্রতি ১২ ঘণ্টায় একবার অপারেটরের সাথে মিলিয়ে দেখে, তাই এর পরেও কয়েক ঘণ্টা ঢোকা যেতে পারে — সেই সময়টা ফ্রি।",
+    "q4": "পাসওয়ার্ড লাগবে?",
+    "a4": "না। আপনার নম্বরই অ্যাকাউন্ট। যে ঢুকতে চাইবে তাকে ওই সিমে আসা কোড দিতে হবে, তাই ভুলে যাওয়ার কিছু নেই, ফাঁস হওয়ার কিছুও নেই।",
+    "q5": "হটস্পট পার্টিতে সত্যিই ডেটা খরচ হয় না?",
+    "a5": "ঠিক — হোস্টের ফোনই স্থানীয় ওয়াইফাই দিয়ে গান পাঠায়। তবে সেভাবে শুধু হোস্টের ফোনে থাকা গানই চালানো যায়; ক্লাউড লাইব্রেরির জন্য ইন্টারনেট লাগে।",
+    "q6": "কোড না এলে কী করব?",
+    "a6": "কয়েক সেকেন্ড দেখুন — দিনের প্রথম এসএমএসটাই সবচেয়ে ধীর। তারপরও না এলে পেছনে গিয়ে নম্বরটি আবার দিন। অল্প সময়ে একটি নম্বরে কতগুলো কোড যেতে পারে অপারেটর সেটা সীমিত রাখে, তাই বারবার ব্যর্থ হলে দু-এক মিনিট পর আবার চেষ্টা করুন।",
+    "q7": "অ্যাপটা কোথায় পাব?",
+    "a7": "সুরআড্ডা এখন অ্যাপ স্টোরের বদলে সরাসরি দেওয়া হয়। আগে সাবস্ক্রাইব করুন, তারপর যে ডাউনলোড লিংক পাবেন সেটি ব্যবহার করুন — একই নম্বরে ঢুকতে পারবেন।",
+
+    "foot.blurb": "একটা মিউজিক প্লেয়ার, যেটা সব ফোনে একসাথে বাজে। বাংলাদেশে বানানো — এখানে মানুষ যেভাবে গান শেয়ার করে সেভাবেই।",
+    "foot.product": "প্রোডাক্ট",
+    "foot.support": "সহায়তা",
+    "foot.hours": "১ কর্মদিবসের মধ্যে উত্তর",
+    "foot.cancel": "বাতিল করার নিয়ম",
+    "foot.copy": "© ২০২৬ সুরআড্ডা। সর্বস্বত্ব সংরক্ষিত।",
+    "foot.price": "দিনে ৳২.৭৮, ভ্যাট ও এসডি সহ · রবি ০১৮ ও সার্কেল ০১৬",
+
+    "err.empty": "আপনার মোবাইল নম্বর লিখুন।",
+    "err.badnum": "০১ দিয়ে শুরু করে ১১ সংখ্যার নম্বর লিখুন, যেমন ০১XXXXXXXXX।",
+    "err.carrier": "শুধু রবি (০১৮) ও সার্কেল (০১৬) নম্বর সাবস্ক্রাইব করতে পারবে।",
+    "err.needcode": "কোডের ৬টি সংখ্যাই লিখুন।",
+    "err.needname": "একটা নাম দিন, যাতে বন্ধুরা আপনাকে চিনতে পারে।",
+    "err.badreply": "সার্ভার এমন কিছু পাঠিয়েছে যা আমরা পড়তে পারিনি। আবার চেষ্টা করুন।",
+    "err.timeout": "অনেক সময় লেগে গেল। ইন্টারনেট দেখে আবার চেষ্টা করুন।",
+    "err.network": "সাবস্ক্রিপশন সার্ভারে পৌঁছানো যাচ্ছে না। আবার চেষ্টা করুন।",
+    "err.sendfail": "কোড পাঠানো যায়নি। একটু পরে আবার চেষ্টা করুন।",
+    "err.badcode": "কোডটি গ্রহণ করা হয়নি। দেখে নিয়ে আবার চেষ্টা করুন।",
+    "err.expired": "কোডের সময় শেষ। পেছনে গিয়ে নতুন কোড নিন।",
+    "err.whitelist": "এই নম্বরটি এখনো সুরআড্ডার জন্য অনুমোদিত নয়। সহায়তায় যোগাযোগ করুন।",
+    "err.already": "এই নম্বর আগেই সাবস্ক্রাইব করা — কোনো টাকা কাটা হয়নি।",
+    "err.retry": "অপারেটর স্পষ্ট উত্তর দেয়নি। আরেকবার চেষ্টা করুন।"
+  };
+  var TICK = {
+    en: ["Every phone a speaker", "Synced to the second", "Works on a hotspot",
+         "No data needed", "Shared library", "Your own songs", "Live radio",
+         "Tk 2.78 / day"],
+    bn: ["সব ফোনই স্পিকার", "একই সেকেন্ডে সিঙ্ক", "হটস্পটেই চলে",
+         "ডেটা লাগে না", "শেয়ার্ড লাইব্রেরি", "নিজের গান", "লাইভ রেডিও",
+         "দিনে ৳২.৭৮"]
+  };
+
+  function buildTicker() {
+    var host = $("ticker");
+    var words = TICK[lang] || TICK.en;
+    var half = document.createElement("div");
+    words.forEach(function (w) {
+      var s = document.createElement("span");
+      s.textContent = w;
+      half.appendChild(s);
+    });
+    host.innerHTML = "";
+    // Two identical halves so translateX(-50%) lands exactly on a seam.
+    host.appendChild(half);
+    host.appendChild(half.cloneNode(true));
+  }
+
+  function phFor(key) {
+    return (lang === "bn" && BN[key]) ? BN[key] : (EN_PH[key] || "");
+  }
+
+  function applyLang(next) {
+    lang = next === "bn" ? "bn" : "en";
+    var root = document.documentElement;
+    root.setAttribute("lang", lang);
+    root.setAttribute("data-lang", lang);
+
+    document.querySelectorAll("[data-i18n]").forEach(function (el) {
+      var v = t(el.getAttribute("data-i18n"));
+      if (v) el.innerHTML = v;
+    });
+    document.querySelectorAll("[data-i18n-ph]").forEach(function (el) {
+      el.setAttribute("placeholder", phFor(el.getAttribute("data-i18n-ph")));
+    });
+    document.querySelectorAll("[data-set-lang]").forEach(function (b) {
+      b.setAttribute("aria-pressed", b.getAttribute("data-set-lang") === lang ? "true" : "false");
+    });
+
+    try { localStorage.setItem("shuradda.lang", lang); } catch (e) { /* private mode */ }
+    buildTicker();
+  }
+
+  document.querySelectorAll("[data-set-lang]").forEach(function (b) {
+    b.addEventListener("click", function () { applyLang(b.getAttribute("data-set-lang")); });
+  });
+  /* ═══════════════════════════════════════════════════════════════
+     Reveal on scroll + init
+     ═══════════════════════════════════════════════════════════════ */
+  var reduced = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  var reveals = document.querySelectorAll(".reveal");
+
+  if (reduced || !("IntersectionObserver" in window)) {
+    reveals.forEach(function (el) { el.classList.add("in"); });
+  } else {
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (e) {
+        if (e.isIntersecting) { e.target.classList.add("in"); io.unobserve(e.target); }
+      });
+    }, { rootMargin: "0px 0px -8% 0px", threshold: 0.08 });
+    reveals.forEach(function (el) { io.observe(el); });
+  }
+
+  // Feature screenshots: while a placeholder src still points at a file that
+  // is not there, mark its frame so CSS can draw a labelled dashed slot. A
+  // broken-image icon six times over reads as a broken page; an empty slot
+  // reads as one that is waiting for assets. The .complete check catches a
+  // 404 that resolved before this script ran.
+  document.querySelectorAll(".shot img").forEach(function (img) {
+    function flag() {
+      var frame = img.closest(".shot");
+      if (frame) frame.classList.add("missing");
+    }
+    img.addEventListener("error", flag);
+    if (img.complete && img.naturalWidth === 0) flag();
+  });
+
+  // Digits only, so a pasted "+880 18…" still normalises cleanly. The code
+  // field has its own handler because it also paints the cells.
+  numInput.addEventListener("input", function () {
+    this.value = this.value.replace(/[^\d+\s-]/g, "");
+    paintOps();
+  });
+
+  var saved = null;
+  try { saved = localStorage.getItem("shuradda.lang"); } catch (e) { /* private mode */ }
+  applyLang(saved || "en");
+})();
+</script>
+</body>
+</html>
+

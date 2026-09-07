@@ -17,7 +17,7 @@ Future<void> main() async {
   if (!kIsWeb) {
     await JustAudioBackground.init(
       androidNotificationChannelId: 'com.example.suradda_app.channel.audio',
-      androidNotificationChannelName: 'SurAdda playback',
+      androidNotificationChannelName: 'ShurAdda playback',
       androidNotificationOngoing: true,
     );
   }
@@ -27,7 +27,7 @@ Future<void> main() async {
   // MediaStore is Android-specific. Guard against Web and other platforms.
   if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
     await MediaStore.ensureInitialized();
-    MediaStore.appFolder = 'SurAdda';
+    MediaStore.appFolder = 'ShurAdda';
   }
 
   runApp(const SurAddaApp());

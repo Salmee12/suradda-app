@@ -33,7 +33,7 @@ class _LoginPageState extends State<LoginPage> {
                     size: 64, color: AppColors.primary),
                 const SizedBox(height: 20),
                 const Text(
-                  'SurAdda',
+                  'ShurAdda',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 34,

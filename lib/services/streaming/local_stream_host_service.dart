@@ -24,7 +24,7 @@ class LocalStreamHostService extends ChangeNotifier {
   bool get isPlaying => _isPlaying;
   int get currentPositionMs => _currentPositionMs;
 
-  Future<void> startHost({int port = 8090, String partyName = 'Suradda Hotspot Party'}) async {
+  Future<void> startHost({int port = 8090, String partyName = 'ShurAdda Hotspot Party'}) async {
     if (_server != null) return;
 
     _server = await HttpServer.bind(InternetAddress.anyIPv4, port);

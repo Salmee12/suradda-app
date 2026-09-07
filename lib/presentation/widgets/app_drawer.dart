@@ -76,7 +76,7 @@ class _AppDrawerState extends State<AppDrawer> {
             UserAccountsDrawerHeader(
               decoration: const BoxDecoration(color: AppColors.card),
               accountName: Text(
-                user?.username ?? 'SurAdda listener',
+                user?.username ?? 'ShurAdda listener',
                 style: const TextStyle(fontWeight: FontWeight.w700),
               ),
               accountEmail: Text(user?.phoneNumber ?? ''),

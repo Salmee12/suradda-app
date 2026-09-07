@@ -61,6 +61,27 @@ dev_dependencies:
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
   flutter_lints: ^6.0.0
+  flutter_launcher_icons: ^0.14.4
+
+# Launcher icons. Regenerate with `dart run flutter_launcher_icons` after
+# replacing the source image.
+#
+# The source is a JPEG, which has no alpha channel, so the adaptive foreground
+# layer is fully opaque and covers adaptive_icon_background entirely. That is
+# fine here, and it is also why the inset is 0: the artwork already sits in the
+# middle ~60% of a near-black square, so it is its own safe-zone padding. The
+# package's default 16% inset would shrink it again and leave the bubble looking
+# lost in a dark field. The background colour is kept in sync with
+# AppColors.background anyway, so a transparent PNG can be dropped in later
+# without touching anything else.
+flutter_launcher_icons:
+  android: true
+  ios: false
+  image_path: "assets/icons/app_icon.jpg"
+  adaptive_icon_background: "#121212"
+  adaptive_icon_foreground: "assets/icons/app_icon.jpg"
+  adaptive_icon_foreground_inset: 0
+  min_sdk_android: 21
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
@@ -74,7 +95,8 @@ flutter:
   uses-material-design: true
 
   # To add assets to your application, add an assets section, like this:
-  # assets:
+  assets:
+    - assets/icons/app_icon.jpg
   #   - images/a_dot_burr.jpeg
   #   - images/a_dot_ham.jpeg
 
