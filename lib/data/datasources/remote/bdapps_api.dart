@@ -218,15 +218,26 @@ class OtpSendResult {
   final String? referenceNo;
   final String? message;
 
-  OtpSendResult({required this.success, this.referenceNo, this.message});
+  /// True when BDApps returned E1351 ("User already registered") instead of
+  /// issuing an OTP. No referenceNo exists for this response — the number is
+  /// already opted in, so the caller should re-run checkSubscription() instead
+  /// of sending the user to the OTP-entry screen.
+  final bool alreadyRegistered;
+
+  OtpSendResult({
+    required this.success,
+    this.referenceNo,
+    this.message,
+    this.alreadyRegistered = false,
+  });
 
   factory OtpSendResult.fromJson(Map<String, dynamic> json) {
     final ref = (json['referenceNo'] as String?)?.trim();
+    final alreadyRegistered = json['alreadyRegistered'] == true;
     return OtpSendResult(
-      // A success with no referenceNo is unusable — there is nothing to verify
-      // against — so it is not a success as far as the app is concerned.
-      success: json['success'] == true && (ref?.isNotEmpty ?? false),
+      success: json['success'] == true && ((ref?.isNotEmpty ?? false) || alreadyRegistered),
       referenceNo: ref,
+      alreadyRegistered: alreadyRegistered,
       message: (json['message'] ?? json['statusDetail']) as String?,
     );
   }

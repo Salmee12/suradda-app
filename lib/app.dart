@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:suradda_app/presentation/viewmodels/hotspot_room_viewmodel.dart';
 import 'package:suradda_app/presentation/viewmodels/online_room_viewmodel.dart';
+import 'package:suradda_app/presentation/views/auth/login_page.dart';
 import 'package:suradda_app/services/streaming/local_stream_host_service.dart';
 import 'core/theme/app_colors.dart';
 import 'core/theme/app_theme.dart';
@@ -56,7 +57,8 @@ class AuthGate extends StatelessWidget {
           case AuthStatus.subscriptionExpired:
             return const SubscriptionExpiredPage();
           case AuthStatus.unauthenticated:
-            return const PhoneLoginPage();
+            //return const PhoneLoginPage();
+            return const LoginPage();
           case AuthStatus.unknown:
             return const Scaffold(
               backgroundColor: AppColors.background,

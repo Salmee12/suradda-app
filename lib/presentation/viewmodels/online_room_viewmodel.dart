@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:dio/dio.dart';
 import 'package:flutter/widgets.dart';
 import '../../data/models/participant_model.dart';
 import '../../data/models/room_model.dart';
@@ -164,7 +165,7 @@ class OnlineRoomViewModel extends ChangeNotifier with WidgetsBindingObserver {
   /// The socket died on its own. Stop broadcasting into the void, tell the UI
   /// the truth, and start trying to get back in.
   void _handleSocketDrop() {
-    if (room == null) return; // Already left; nothing to recover.
+    if (room == null || _isLeaving) return; // Already left; nothing to recover.
     debugPrint('Online party socket dropped — entering reconnect');
     _syncTimer?.cancel();
     _syncTimer = null;
@@ -187,10 +188,15 @@ class OnlineRoomViewModel extends ChangeNotifier with WidgetsBindingObserver {
     final delay = Duration(seconds: 2 << _retryAttempt);
     _retryAttempt++;
     debugPrint('Retrying party socket in ${delay.inSeconds}s (attempt $_retryAttempt)');
-    _retryTimer = Timer(delay, () async {
+      _retryTimer = Timer(delay, () async {
       if (room == null) return;
       final ok = await _connectSocket();
-      if (!ok) _scheduleRetry();
+      if (ok) return;
+      if (await _roomIsGone()) {
+        _handleRoomClosed();
+        return;
+      }
+      _scheduleRetry();
     });
   }
 
@@ -202,7 +208,12 @@ class OnlineRoomViewModel extends ChangeNotifier with WidgetsBindingObserver {
     _retryAttempt = 0;
     errorMessage = null;
     final ok = await _connectSocket();
-    if (!ok) _scheduleRetry();
+    if (ok) return;
+    if (await _roomIsGone()) {
+      _handleRoomClosed();
+      return;
+    }
+    _scheduleRetry();
   }
 
   @override
@@ -213,6 +224,16 @@ class OnlineRoomViewModel extends ChangeNotifier with WidgetsBindingObserver {
     retryConnection();
   }
 
+
+
+  String? closedNotice;
+  bool _isLeaving = false;
+
+  void clearClosedNotice() {
+    if (closedNotice == null) return;
+    closedNotice = null;
+    notifyListeners();
+  }
   void _handleMessage(Map<String, dynamic> data) {
     final type = data['type'];
 
@@ -257,6 +278,47 @@ class OnlineRoomViewModel extends ChangeNotifier with WidgetsBindingObserver {
         }
         notifyListeners();
         break;
+      case 'room_closed':
+        _handleRoomClosed();
+        break;
+    }
+  }
+
+  /// Wipes all local party state. Used by both leaving and the server closing the room.
+  void _resetRoomState() {
+    _syncTimer?.cancel();
+    _syncTimer = null;
+    _retryTimer?.cancel();
+    _retryTimer = null;
+    _retryAttempt = 0;
+    socketService.disconnect(); // intentional, so onDisconnected won't fire
+    room = null;
+    participants = [];
+    connection = RoomConnection.idle;
+    errorMessage = null;
+  }
+
+  /// The server ended the party (host left, or the host's grace period expired).
+  void _handleRoomClosed() {
+    if (room == null || _isLeaving) return; // we initiated this ourselves
+    final wasHost = _isHost;
+    if (!wasHost) unawaited(playbackService.pause()); // delete if you'd rather keep playing
+    _resetRoomState();
+    closedNotice = wasHost ? 'The party has ended.' : 'The host ended the party.';
+    notifyListeners();
+  }
+
+  /// After a failed reconnect: "network is down" vs "the party no longer exists".
+  Future<bool> _roomIsGone() async {
+    final current = room;
+    if (current == null) return true;
+    try {
+      await roomRepository.getRoom(current.id);
+      return false;
+    } on DioException catch (e) {
+      return e.response?.statusCode == 404;
+    } catch (_) {
+      return false; // can't tell, assume it's the network
     }
   }
 
@@ -266,7 +328,9 @@ class OnlineRoomViewModel extends ChangeNotifier with WidgetsBindingObserver {
     // 1. If host changes or starts a new song, load it on the client player
     if (songId != null && songId.isNotEmpty && playbackService.currentSong?.trackId != songId) {
       try {
-        final songs = await songRepository.getCloudSongs();
+        // The whole catalogue, not a search page: this resolves the host's
+        // song id, which may be for a track far outside any paging window.
+        final songs = await songRepository.getAllCloudSongs();
         final targetSong = songs.firstWhere(
               (s) => (s.id == songId || s.trackId == songId),
         );
@@ -378,23 +442,25 @@ class OnlineRoomViewModel extends ChangeNotifier with WidgetsBindingObserver {
   }
 
   Future<void> leaveParty() async {
+    final current = room;
+    if (current == null || _isLeaving) return;
+    _isLeaving = true;
     _syncTimer?.cancel();
     _syncTimer = null;
     _retryTimer?.cancel();
     _retryTimer = null;
-    _retryAttempt = 0;
-    socketService.disconnect();
-    if (room != null) {
-      try {
-        await roomRepository.leaveRoom(room!.id);
-      } catch (e) {
-        debugPrint('Error leaving room: $e');
-      }
+    try {
+      // Server first, so it treats this as a deliberate exit, not a dropped
+      // connection with a grace period. The timeout keeps a cold Render server
+      // from freezing the Leave button.
+      await roomRepository
+          .leaveRoom(current.id)
+          .timeout(const Duration(seconds: 5));
+    } catch (e) {
+      debugPrint('Error leaving room: $e');
     }
-    room = null;
-    participants = [];
-    connection = RoomConnection.idle;
-    errorMessage = null;
+    _resetRoomState();
+    _isLeaving = false;
     notifyListeners();
   }
 

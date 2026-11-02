@@ -1,7 +1,11 @@
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 class TokenStorageService {
-  final _storage = const FlutterSecureStorage();
+  // resetOnError: if Android can't decrypt the stored data (e.g. a stale
+  // Auto Backup restore after reinstall), wipe it and continue instead of throwing.
+  final _storage = const FlutterSecureStorage(
+    aOptions: AndroidOptions(resetOnError: true),
+  );
 
   static const _accessKey = 'access_token';
   static const _refreshKey = 'refresh_token';
@@ -33,7 +37,13 @@ class TokenStorageService {
   }
 
   Future<bool> hasTokens() async {
-    final token = await getAccessToken();
-    return token != null;
+    try {
+      final token = await getAccessToken();
+      return token != null && token.isNotEmpty;
+    } catch (_) {
+      // Unreadable storage counts as "not logged in", so AuthGate falls
+      // through to the login screen instead of hanging on the splash.
+      return false;
+    }
   }
 }

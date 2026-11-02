@@ -16,6 +16,30 @@ class PartyView extends StatelessWidget {
     final song = playback.currentSong;
     final offline = vm.connection.isBroken;
 
+
+    Future<void> _confirmLeave(BuildContext context, OnlineRoomViewModel vm) async {
+      if (!vm.isHost) {
+        vm.leaveParty();
+        return;
+      }
+      final ok = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('End the party?'),
+          content: const Text('Leaving will end the party for everyone.'),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text('Stay')),
+            FilledButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                child: const Text('End party')),
+          ],
+        ),
+      );
+      if (ok == true) vm.leaveParty();
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: Text('Party ${room?.code ?? ''}'),
@@ -24,7 +48,8 @@ class PartyView extends StatelessWidget {
           IconButton(
             icon: const Icon(Icons.exit_to_app),
             tooltip: 'Leave Party',
-            onPressed: () => vm.leaveParty(),
+            onPressed: () => _confirmLeave(context, vm),
+
           ),
         ],
       ),
@@ -33,7 +58,7 @@ class PartyView extends StatelessWidget {
           ConnectionBanner(
             connection: vm.connection,
             onRetry: vm.retryConnection,
-            onLeave: vm.leaveParty,
+            onLeave: () => _confirmLeave(context, vm)
           ),
           // Now playing
           Container(

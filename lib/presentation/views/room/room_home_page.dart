@@ -71,6 +71,24 @@ class _RoomHomePageState extends State<RoomHomePage> {
               style: TextStyle(color: AppColors.textSecondary, fontSize: 14),
             ),
             const SizedBox(height: 20),
+            if (onlineVm.closedNotice != null)
+              Container(
+                margin: const EdgeInsets.only(bottom: 16),
+                padding: const EdgeInsets.fromLTRB(14, 6, 6, 6),
+                decoration: _cardDecoration,
+                child: Row(
+                  children: [
+                    const Icon(Icons.info_outline, color: AppColors.primary),
+                    const SizedBox(width: 10),
+                    Expanded(child: Text(onlineVm.closedNotice!)),
+                    IconButton(
+                      icon: const Icon(Icons.close, size: 18),
+                      onPressed: onlineVm.clearClosedNotice,
+                    ),
+                  ],
+                ),
+              ),
+            const SizedBox(height: 20),
             if (onlineVm.errorMessage != null)
               Padding(
                 padding: const EdgeInsets.only(bottom: 16),

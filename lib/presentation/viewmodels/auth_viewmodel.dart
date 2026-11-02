@@ -159,6 +159,28 @@ class AuthViewModel extends ChangeNotifier {
       }
 
       final otp = await repository.sendOtp(e164Phone);
+
+      if (otp.alreadyRegistered) {
+        // No OTP was issued — this number is already opted in with BDApps.
+        // Re-run the subscription check now that BDApps has updated its own
+        // state, so check_subscription.php can find REGISTERED and mint a session.
+        phoneNumber = e164Phone;
+        final recheck = await repository.checkSubscription(e164Phone);
+        if (recheck.canSignInDirectly) {
+          await _completeSignIn(isSubscribedHint: true);
+          isLoading = false;
+          notifyListeners();
+          return false;
+        }
+        // REGISTERED but no account yet, or token mint failed — same as before,
+        // just without an OTP step. Decide how you want this case to proceed
+        // (e.g. ask for a username directly) — flag if you want that path fleshed out.
+        errorMessage = 'Your number is already registered. Please try again in a moment.';
+        isLoading = false;
+        notifyListeners();
+        return false;
+      }
+
       if (!otp.success) {
         errorMessage = otp.message ?? 'Could not send the code. Please try again.';
         isLoading = false;
